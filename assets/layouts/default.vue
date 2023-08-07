@@ -2,7 +2,7 @@
   <main v-if="!authorizationNeeded">
     <mobile-menu v-if="isMobile" @search="showFuzzySearch"></mobile-menu>
     <splitpanes @resized="onResized($event)">
-      <pane min-size="10" :size="menuWidth" v-if="!isMobile && !collapseNav">
+      <pane min-size="10" :size="menuWidth" v-if="hasLeftPanel && (!isMobile && !collapseNav)">
         <side-panel @search="showFuzzySearch"></side-panel>
       </pane>
       <pane min-size="10">
@@ -29,7 +29,7 @@
       class="button is-small is-rounded"
       :class="{ collapsed: collapseNav }"
       id="hide-nav"
-      v-if="!isMobile"
+      v-if="hasLeftPanel && (!isMobile)"
     >
       <span class="icon ml-2" v-if="collapseNav">
         <mdi:light-chevron-right />
