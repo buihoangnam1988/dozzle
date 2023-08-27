@@ -1,13 +1,23 @@
 import { Container } from "@/models/Container";
 
-const sessionHost = useSessionStorage<string | null>("host", null);
+const DOZZLE_HOST = "DOZZLE_HOST";
+export const sessionHost = useSessionStorage<string | null>(DOZZLE_HOST, null);
 
 if (config.hosts.length === 1 && !sessionHost.value) {
   sessionHost.value = config.hosts[0].id;
 }
 
-function persistentVisibleKeys(container: ComputedRef<Container>) {
-  return computed(() => useStorage(stripVersion(container.value.image) + ":" + container.value.command, []));
+export function persistentVisibleKeys(container: ComputedRef<Container>) {
+  return computed(() => useStorage(container.value.storageKey, []));
 }
 
-export { sessionHost, persistentVisibleKeys };
+const DOZZLE_PINNED_CONTAINERS = "DOZZLE_PINNED_CONTAINERS";
+export const pinnedContainers = useStorage(DOZZLE_PINNED_CONTAINERS, new Set<string>());
+
+export function togglePinnedContainer(id: string) {
+  if (pinnedContainers.value.has(id)) {
+    pinnedContainers.value.delete(id);
+  } else {
+    pinnedContainers.value.add(id);
+  }
+}

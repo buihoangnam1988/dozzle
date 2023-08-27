@@ -12,6 +12,7 @@ label:
   total-mem-usage: Total Mem Usage
   dozzle-version: Dozzle Version
   all: All
+  host: Host
   password: Password
   username: Username
   container-name: Container Name
@@ -19,6 +20,7 @@ label:
   created: Created
   avg-cpu: Avg. CPU (%)
   avg-mem: Avg. MEM (%)
+  pinned: Pinned
 tooltip:
   search: Search containers (⌘ + k, ⌃k)
   pin-column: Pin as column
@@ -30,6 +32,7 @@ error:
 title:
   page-not-found: Page not found
   login: Authentication Required
+  dashboard: 1 container | {count} containers
   settings: Settings
 button:
   logout: Logout
@@ -49,11 +52,9 @@ settings:
   options: Options
   show-stopped-containers: Show stopped containers
   about: About
-  search: >-
-    Enable searching with Dozzle using <code>command+f</code> or
-    <code>ctrl+f</code>
+  search: Enable searching with Dozzle using
   using-version: You are using Dozzle {version}.
   update-available: >-
-    New version is available! Update to <a :href="{href}" class="next-release"
+    New version is available! Update to <a href="{href}" class="next-release"
     target="_blank" rel="noreferrer noopener">{nextVersion}</a>.
   show-std: Show stdout and stderr labels

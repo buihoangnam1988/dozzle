@@ -5,7 +5,7 @@
     </header>
     <main :data-scrolling="scrollable ? true : undefined">
       <div class="is-scrollbar-progress is-hidden-mobile">
-        <scroll-progress v-show="paused" :indeterminate="loading" :auto-hide="!loading"></scroll-progress>
+        <scroll-progress v-if="paused" :indeterminate="loading" :auto-hide="!loading"></scroll-progress>
       </div>
       <div ref="scrollableContent">
         <slot :setLoading="setLoading"></slot>
@@ -157,7 +157,7 @@ section {
 
   .fade-enter-active,
   .fade-leave-active {
-    transition: opacity 0.15s ease-in;
+    transition: opacity 0.2s ease-out !important;
   }
 
   .fade-enter,

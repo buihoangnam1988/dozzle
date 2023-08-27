@@ -15,12 +15,13 @@
             <octicon:trash-24 />
           </div>
         </div>
-        <div class="level-right">
+        <div class="level-right is-justify-content-space-between is-flex-grow-1">
           <div class="level-item">{{ $t("toolbar.clear") }}</div>
+          <div class="level-item"><key-shortcut char="k" :modifiers="['shift', 'meta']"></key-shortcut></div>
         </div>
       </div>
     </a>
-    <a class="dropdown-item" :href="`${base}/api/logs/download/${sessionHost}/${container.id}`">
+    <a class="dropdown-item" :href="`${base}/api/logs/download/${container.host}/${container.id}`">
       <div class="level is-justify-content-start">
         <div class="level-left">
           <div class="level-item">
@@ -40,8 +41,9 @@
             <mdi:light-magnify />
           </div>
         </div>
-        <div class="level-right">
+        <div class="level-right is-justify-content-space-between is-flex-grow-1">
           <div class="level-item">{{ $t("toolbar.search") }}</div>
+          <div class="level-item"><key-shortcut char="f"></key-shortcut></div>
         </div>
       </div>
     </a>

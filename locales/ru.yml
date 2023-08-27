@@ -12,6 +12,7 @@ label:
   total-mem-usage: Использование памяти
   dozzle-version: Версия Dozzle
   all: Все
+  host: Хост
   password: Пароль
   username: Имя пользователя
   container-name: Имя контейнера
@@ -30,6 +31,7 @@ error:
 title:
   page-not-found: Страница не найдена
   login: Требуется авторизация
+  dashboard: 1 контейнер | {count} контейнеров
   settings: Настройки
 button:
   logout: Выйти
@@ -48,11 +50,9 @@ settings:
   options: Опции
   show-stopped-containers: Показывать остановленные контейнеры
   about: Информация
-  search: >-
-    Включить поиск с помощью Dozzle, используя <code>command+f</code> или
-    <code>ctrl+f</code>
+  search: Включить поиск с помощью Dozzle, используя
   using-version: Вы используете версию Dozzle {version}.
   update-available: >-
-    Доступна новая версия! Обновить до <a :href="{href}" class="next-release"
+    Доступна новая версия! Обновить до <a href="{href}" class="next-release"
     target="_blank" rel="noreferrer noopener">{nextVersion}</a>.
   show-std: Показывать метки stdout и stderr

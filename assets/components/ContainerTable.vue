@@ -28,6 +28,7 @@
             {{ container.name }}
           </router-link>
         </td>
+        <td v-if="isVisible('host')">{{ container.hostLabel }}</td>
         <td v-if="isVisible('state')">{{ container.state }}</td>
         <td v-if="isVisible('created')">
           <distance-time :date="container.created" strict :suffix="false"></distance-time>
@@ -58,12 +59,18 @@
 
 <script setup lang="ts">
 import { Container } from "@/models/Container";
+import { toRefs } from "@vueuse/core";
 
 const fields = {
   name: {
     label: "label.container-name",
     sortFunc: (a: Container, b: Container) => a.name.localeCompare(b.name) * direction.value,
     mobileVisible: true,
+  },
+  host: {
+    label: "label.host",
+    sortFunc: (a: Container, b: Container) => a.hostLabel.localeCompare(b.hostLabel) * direction.value,
+    mobileVisible: false,
   },
   state: {
     label: "label.status",
@@ -91,8 +98,13 @@ const { containers, perPage = 15 } = defineProps<{
   containers: Container[];
   perPage?: number;
 }>();
-const sortField: Ref<keyof typeof fields> = ref("created");
-const direction = ref<1 | -1>(-1);
+type keys = keyof typeof fields;
+
+const storage = useStorage<{ column: keys; direction: 1 | -1 }>("DOZZLE_TABLE_CONTAINERS_SORT", {
+  column: "created",
+  direction: -1,
+});
+const { column: sortField, direction } = toRefs(storage);
 const sortedContainers = computedWithControl(
   () => [containers.length, sortField.value, direction.value],
   () => {
@@ -112,7 +124,7 @@ const paginated = computed(() => {
   return sortedContainers.value.slice(start, end);
 });
 
-function sort(field: keyof typeof fields) {
+function sort(field: keys) {
   if (sortField.value === field) {
     direction.value *= -1;
   } else {
@@ -120,7 +132,7 @@ function sort(field: keyof typeof fields) {
     direction.value = 1;
   }
 }
-function isVisible(field: keyof typeof fields) {
+function isVisible(field: keys) {
   return fields[field].mobileVisible || !isMobile.value;
 }
 </script>

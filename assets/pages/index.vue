@@ -4,8 +4,8 @@
       <div class="tile is-child box">
         <div class="level-item has-text-centered">
           <div>
-            <p class="title">{{ containers.length }}</p>
-            <p class="heading">{{ $t("label.total-containers") }}</p>
+            <p class="title">{{ runningContainers.length }} / {{ containers.length }}</p>
+            <p class="heading">{{ $t("label.running") }} / {{ $t("label.total-containers") }}</p>
           </div>
         </div>
       </div>
@@ -52,9 +52,13 @@
 <script lang="ts" setup>
 import { Container } from "@/models/Container";
 
+const { t } = useI18n();
 const { version } = config;
 const containerStore = useContainerStore();
-const { containers } = storeToRefs(containerStore) as { containers: unknown } as { containers: Ref<Container[]> };
+const { containers, ready } = storeToRefs(containerStore) as unknown as {
+  containers: Ref<Container[]>;
+  ready: Ref<boolean>;
+};
 
 const mostRecentContainers = $computed(() => [...containers.value].sort((a, b) => +b.created - +a.created));
 const runningContainers = $computed(() => mostRecentContainers.filter((c) => c.state === "running"));
@@ -76,6 +80,12 @@ useIntervalFn(
   1000,
   { immediate: true },
 );
+
+watchEffect(() => {
+  if (ready.value) {
+    setTitle(t("title.dashboard", { count: runningContainers.length }));
+  }
+});
 </script>
 <style lang="scss" scoped>
 .panel {
@@ -127,5 +137,9 @@ useIntervalFn(
 :deep(tr td) {
   padding-top: 1em;
   padding-bottom: 1em;
+}
+
+.section + .section {
+  padding-top: 0;
 }
 </style>
