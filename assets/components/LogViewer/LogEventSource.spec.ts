@@ -4,15 +4,17 @@ import { createTestingPinia } from "@pinia/testing";
 import EventSource, { sources } from "eventsourcemock";
 import LogEventSource from "./LogEventSource.vue";
 import LogViewer from "./LogViewer.vue";
-import { settings } from "../../composables/settings";
-import { useSearchFilter } from "@/composables/search";
+import { settings } from "@/stores/settings";
+import { useSearchFilter } from "@/composable/search";
 import { vi, describe, expect, beforeEach, test, afterEach } from "vitest";
 import { computed, nextTick } from "vue";
 import { createRouter, createWebHistory } from "vue-router";
+import { containerContext } from "@/composable/containerContext";
 
 vi.mock("@/stores/config", () => ({
   __esModule: true,
   default: { base: "", hosts: [{ name: "localhost", id: "localhost" }] },
+  withBase: (path: string) => path,
 }));
 
 /**
@@ -71,8 +73,10 @@ describe("<LogEventSource />", () => {
           LogViewer,
         },
         provide: {
-          container: computed(() => ({ id: "abc", image: "test:v123", host: "localhost" })),
-          "stream-config": reactive({ stdout: true, stderr: true }),
+          [containerContext as symbol]: {
+            container: computed(() => ({ id: "abc", image: "test:v123", host: "localhost" })),
+            streamConfig: reactive({ stdout: true, stderr: true }),
+          },
           scrollingPaused: computed(() => false),
         },
       },
@@ -85,7 +89,7 @@ describe("<LogEventSource />", () => {
     });
   }
 
-  const sourceUrl = "/api/logs/stream/localhost/abc?lastEventId=&stdout=1&stderr=1";
+  const sourceUrl = "/api/logs/stream/localhost/abc?stdout=1&stderr=1";
 
   test("renders correctly", async () => {
     const wrapper = createLogEventSource();

@@ -1,52 +1,31 @@
 <template>
-  <div class="section tile is-ancestor">
-    <div class="tile is-parent">
-      <div class="tile is-child box">
-        <div class="level-item has-text-centered">
-          <div>
-            <p class="title">{{ runningContainers.length }} / {{ containers.length }}</p>
-            <p class="heading">{{ $t("label.running") }} / {{ $t("label.total-containers") }}</p>
-          </div>
+  <page-with-links class="gap-16">
+    <section>
+      <div class="stats grid bg-base-lighter shadow">
+        <div class="stat">
+          <div class="stat-value">{{ runningContainers.length }} / {{ containers.length }}</div>
+          <div class="stat-title">{{ $t("label.running") }} / {{ $t("label.total-containers") }}</div>
         </div>
-      </div>
-    </div>
-    <div class="tile is-parent">
-      <div class="tile is-child box">
-        <div class="level-item has-text-centered">
-          <div>
-            <p class="title">{{ totalCpu }}%</p>
-            <p class="heading">{{ $t("label.total-cpu-usage") }}</p>
-          </div>
+        <div class="stat">
+          <div class="stat-value">{{ totalCpu }}%</div>
+          <div class="stat-title">{{ $t("label.total-cpu-usage") }}</div>
         </div>
-      </div>
-    </div>
-    <div class="tile is-parent">
-      <div class="tile is-child box">
-        <div class="level-item has-text-centered">
-          <div>
-            <p class="title">{{ formatBytes(totalMem) }}</p>
-            <p class="heading">{{ $t("label.total-mem-usage") }}</p>
-          </div>
+        <div class="stat">
+          <div class="stat-value">{{ formatBytes(totalMem) }}</div>
+          <div class="stat-title">{{ $t("label.total-mem-usage") }}</div>
         </div>
-      </div>
-    </div>
-    <div class="tile is-parent">
-      <div class="tile is-child box">
-        <div class="level-item has-text-centered">
-          <div>
-            <p class="title">{{ version }}</p>
-            <p class="heading">{{ $t("label.dozzle-version") }}</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <section class="section table-container">
-    <div class="box">
+        <div class="stat">
+          <div class="stat-value">{{ version }}</div>
+          <div class="stat-title">{{ $t("label.dozzle-version") }}</div>
+        </div>
+      </div>
+    </section>
+
+    <section>
       <container-table :containers="runningContainers"></container-table>
-    </div>
-  </section>
+    </section>
+  </page-with-links>
 </template>
 
 <script lang="ts" setup>
@@ -60,7 +39,7 @@ const { containers, ready } = storeToRefs(containerStore) as unknown as {
   ready: Ref<boolean>;
 };
 
-const mostRecentContainers = $computed(() => [...containers.value].sort((a, b) => +b.created - +a.created));
+const mostRecentContainers = $computed(() => containers.value.toSorted((a, b) => +b.created - +a.created));
 const runningContainers = $computed(() => mostRecentContainers.filter((c) => c.state === "running"));
 
 let totalCpu = $ref(0);
@@ -87,56 +66,22 @@ watchEffect(() => {
   }
 });
 </script>
-<style lang="scss" scoped>
-.panel {
-  border: 1px solid var(--border-color);
-
-  .panel-block,
-  .panel-tabs {
-    border-color: var(--border-color);
-
-    .is-active {
-      border-color: var(--border-hover-color);
-    }
-
-    .name {
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      overflow: hidden;
-    }
-
-    .status {
-      margin-left: auto;
-      white-space: nowrap;
-    }
-  }
-}
-
-@media screen and (max-width: 768px) {
-  .pb-0-is-mobile {
-    padding-bottom: 0 !important;
-  }
-
-  .pt-0-is-mobile {
-    padding-top: 0 !important;
-  }
-}
-
-.icon {
-  padding: 10px 3px;
-}
-
-.bar-chart {
-  height: 1.5em;
-  .bar-text {
-    font-size: 0.9em;
-    padding: 0 0.5em;
-  }
-}
-
+<style lang="postcss" scoped>
 :deep(tr td) {
   padding-top: 1em;
   padding-bottom: 1em;
+}
+
+.stat > div {
+  @apply text-center;
+}
+
+.stat-value {
+  @apply font-light;
+}
+
+.stat-title {
+  @apply font-light;
 }
 
 .section + .section {

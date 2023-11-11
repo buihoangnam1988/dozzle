@@ -5,10 +5,6 @@ import SimpleLogItem from "@/components/LogViewer/SimpleLogItem.vue";
 import DockerEventLogItem from "@/components/LogViewer/DockerEventLogItem.vue";
 import SkippedEntriesLogItem from "@/components/LogViewer/SkippedEntriesLogItem.vue";
 
-export interface HasComponent {
-  getComponent(): Component;
-}
-
 export type JSONValue = string | number | boolean | JSONObject | Array<JSONValue>;
 export type JSONObject = { [x: string]: JSONValue };
 export type Position = "start" | "end" | "middle" | undefined;
@@ -22,7 +18,7 @@ export interface LogEvent {
   readonly s: "stdout" | "stderr" | "unknown";
 }
 
-export abstract class LogEntry<T extends string | JSONObject> implements HasComponent {
+export abstract class LogEntry<T extends string | JSONObject> {
   protected readonly _message: T;
   constructor(
     message: T,
@@ -102,7 +98,7 @@ export class DockerEventLogEntry extends LogEntry<string> {
   constructor(
     message: string,
     date: Date,
-    public readonly event: string,
+    public readonly event: "container-stopped" | "container-started",
   ) {
     super(message, date.getTime(), date, "stderr", "info");
   }
@@ -148,21 +144,21 @@ export class SkippedLogsEntry extends LogEntry<string> {
 }
 
 export function asLogEntry(event: LogEvent): LogEntry<string | JSONObject> {
-  if (typeof event.m === "string") {
+  if (isObject(event.m)) {
+    return new ComplexLogEntry(
+      event.m,
+      event.id,
+      new Date(event.ts),
+      event.l,
+      event.s === "unknown" ? "stderr" : event.s ?? "stderr",
+    );
+  } else {
     return new SimpleLogEntry(
       event.m,
       event.id,
       new Date(event.ts),
       event.l,
       event.p,
-      event.s === "unknown" ? "stderr" : event.s ?? "stderr",
-    );
-  } else {
-    return new ComplexLogEntry(
-      event.m,
-      event.id,
-      new Date(event.ts),
-      event.l,
       event.s === "unknown" ? "stderr" : event.s ?? "stderr",
     );
   }

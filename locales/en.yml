@@ -25,10 +25,30 @@ tooltip:
   search: Search containers (⌘ + k, ⌃k)
   pin-column: Pin as column
 error:
-  page-not-found: This page does not exist.
-  invalid-auth: Username and password are not valid.
+  page-not-found: This page does not exist
+  invalid-auth: Username or password are not valid
   logs-skipped: Skipped {total} entries
-  container-not-found: Container not found.
+  container-not-found: Container not found
+  events-stream:
+    title: Unexpected Error
+    message: >-
+      Dozzle UI wasn't able to connect API. Please check your network settings.
+      If you are using a reverse proxy, please make sure it is configured
+      properly.
+  events-timeout:
+    title: Something is not right
+    message: >-
+      Dozzle UI timeed out while connecting to API. Please check network
+      connection and try again.
+alert:
+  redirected:
+    title: Redirected to new container
+    message: Dozzle automatically redirected you to new container {containerId}.
+  similar-container-found:
+    title: Similar container found
+    message: >-
+      Dozzle found a similar container {containerId} that is running on the same
+      host. Do you want to switch to it?
 title:
   page-not-found: Page not found
   login: Authentication Required
@@ -37,6 +57,7 @@ title:
 button:
   logout: Logout
   login: Login
+  settings: Settings
 placeholder:
   search-containers: Search containers (⌘ + k, ⌃k)
 settings:
@@ -55,6 +76,15 @@ settings:
   search: Enable searching with Dozzle using
   using-version: You are using Dozzle {version}.
   update-available: >-
-    New version is available! Update to <a href="{href}" class="next-release"
-    target="_blank" rel="noreferrer noopener">{nextVersion}</a>.
+    New version is available! Update to <a href="{href}" target="_blank"
+    rel="noreferrer noopener">{nextVersion}</a>.
   show-std: Show stdout and stderr labels
+  automatic-redirect: Automatically redirect to new containers with the same name
+releases:
+  features: one new feature | {count} features
+  bugFixes: one bug fix | {count} fixes
+  breaking: one breaking change | {count} breaking changes
+  three_parts: "{first}, {second} and {third}"
+  two_parts: "{first} with {second}"
+  latest: Latest
+  no_releases: You have the latest version

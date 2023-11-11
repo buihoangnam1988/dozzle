@@ -1,14 +1,13 @@
 <template>
-  <div class="hero is-halfheight">
-    <div class="hero-body">
-      <div class="container has-text-centered">
-        <h1 class="title">
-          404.
-          <small class="subtitle">{{ $t("error.page-not-found") }}</small>
-        </h1>
+  <page-with-links>
+    <div class="hero min-h-screen bg-base-200">
+      <div class="hero-content text-center">
+        <div class="max-w-md">
+          <p class="py-6 text-2xl font-bold">{{ $t("error.page-not-found") }}</p>
+        </div>
       </div>
     </div>
-  </div>
+  </page-with-links>
 </template>
 
 <script lang="ts" setup>

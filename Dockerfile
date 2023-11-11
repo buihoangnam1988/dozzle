@@ -1,5 +1,5 @@
 # Build assets
-FROM --platform=$BUILDPLATFORM node:20-alpine as node
+FROM --platform=$BUILDPLATFORM node:21-alpine as node
 
 RUN corepack enable
 
@@ -14,7 +14,7 @@ COPY package.json ./
 RUN pnpm install --offline --ignore-scripts --no-optional
 
 # Copy assets and translations to build
-COPY .* vite.config.ts ./
+COPY .* *.config.ts *.config.js ./
 COPY assets ./assets
 COPY locales ./locales
 COPY public ./public
@@ -22,7 +22,7 @@ COPY public ./public
 # Build assets
 RUN pnpm build
 
-FROM --platform=$BUILDPLATFORM golang:1.21.0-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.21.4-alpine AS builder
 
 RUN apk add --no-cache ca-certificates && mkdir /dozzle
 
@@ -36,10 +36,7 @@ RUN go mod download
 COPY --from=node /build/dist ./dist
 
 # Copy all other files
-COPY analytics ./analytics
-COPY healthcheck ./healthcheck
-COPY docker ./docker
-COPY web ./web
+COPY internal ./internal
 COPY main.go ./
 
 # Args
@@ -49,11 +46,12 @@ ARG TARGETOS TARGETARCH
 # Build binary
 RUN GOOS=$TARGETOS GOARCH=$TARGETARCH CGO_ENABLED=0 go build -ldflags "-s -w -X main.version=$TAG"  -o dozzle
 
+RUN mkdir /data
 
 FROM scratch
 
 ENV PATH /bin
-
+COPY --from=builder /data /data
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=builder /dozzle/dozzle /dozzle
 

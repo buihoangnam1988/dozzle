@@ -2,6 +2,11 @@ import { acceptHMRUpdate, defineStore } from "pinia";
 import { Ref, UnwrapNestedRefs } from "vue";
 import type { ContainerHealth, ContainerJson, ContainerStat } from "@/types/Container";
 import { Container } from "@/models/Container";
+import i18n from "@/modules/i18n";
+
+const { showToast } = useToast();
+// @ts-ignore
+const { t } = i18n.global;
 
 export const useContainerStore = defineStore("container", () => {
   const containers: Ref<Container[]> = ref([]);
@@ -29,7 +34,20 @@ export const useContainerStore = defineStore("container", () => {
   function connect() {
     es?.close();
     ready.value = false;
-    es = new EventSource(`${config.base}/api/events/stream`);
+    es = new EventSource(withBase("/api/events/stream"));
+    es.addEventListener("error", (e) => {
+      if (es?.readyState === EventSource.CLOSED) {
+        showToast(
+          {
+            id: "events-stream",
+            message: t("error.events-stream.message"),
+            title: t("error.events-stream.title"),
+            type: "error",
+          },
+          { once: true },
+        );
+      }
+    });
 
     es.addEventListener("containers-changed", (e: Event) =>
       updateContainers(JSON.parse((e as MessageEvent).data) as ContainerJson[]),
@@ -58,10 +76,32 @@ export const useContainerStore = defineStore("container", () => {
       }
     });
 
+    es.onopen = () => {
+      if (containers.value.length > 0) {
+        containers.value = [];
+      }
+    };
+
     watchOnce(containers, () => (ready.value = true));
   }
 
   connect();
+
+  (async function () {
+    try {
+      await until(ready).toBe(true, { timeout: 8000, throwOnTimeout: true });
+    } catch (e) {
+      showToast(
+        {
+          id: "events-timeout",
+          message: t("error.events-timeout.message"),
+          title: t("error.events-timeout.title"),
+          type: "error",
+        },
+        { once: true },
+      );
+    }
+  })();
 
   const updateContainers = (containersPayload: ContainerJson[]) => {
     const existingContainers = containersPayload.filter((c) => allContainersById.value[c.id]);
@@ -93,8 +133,8 @@ export const useContainerStore = defineStore("container", () => {
   };
 
   const currentContainer = (id: Ref<string>) => computed(() => allContainersById.value[id.value]);
-  const appendActiveContainer = ({ id }: Container) => activeContainerIds.value.push(id);
-  const removeActiveContainer = ({ id }: Container) =>
+  const appendActiveContainer = ({ id }: { id: string }) => activeContainerIds.value.push(id);
+  const removeActiveContainer = ({ id }: { id: string }) =>
     activeContainerIds.value.splice(activeContainerIds.value.indexOf(id), 1);
 
   return {
@@ -110,8 +150,6 @@ export const useContainerStore = defineStore("container", () => {
   };
 });
 
-// @ts-ignore
 if (import.meta.hot) {
-  // @ts-ignore
   import.meta.hot.accept(acceptHMRUpdate(useContainerStore, import.meta.hot));
 }

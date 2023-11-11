@@ -28,13 +28,7 @@ export default defineConfig(() => ({
   plugins: [
     VueMacros({
       plugins: {
-        vue: Vue({
-          template: {
-            compilerOptions: {
-              whitespace: "preserve",
-            },
-          },
-        }),
+        vue: Vue(),
       },
     }),
     Icons({
@@ -60,7 +54,7 @@ export default defineConfig(() => ({
     AutoImport({
       imports: ["vue", "vue-router", "vue-i18n", "vue/macros", "pinia", "@vueuse/head", "@vueuse/core"],
       dts: "assets/auto-imports.d.ts",
-      dirs: ["assets/composables", "assets/stores", "assets/utils"],
+      dirs: ["assets/composable", "assets/stores", "assets/utils"],
       vueTemplate: true,
     }),
     VueI18nPlugin({
@@ -71,6 +65,9 @@ export default defineConfig(() => ({
     }),
   ],
   server: {
+    watch: {
+      ignored: ["**/data/**"],
+    },
     proxy: {
       "/api": {
         target: {
