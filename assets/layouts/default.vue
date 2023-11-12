@@ -1,8 +1,8 @@
 <template>
   <div v-if="!authorizationNeeded">
-    <mobile-menu v-if="isMobile" @search="showFuzzySearch"></mobile-menu>
+    <mobile-menu v-if="isSlimVersion && isMobile" @search="showFuzzySearch"></mobile-menu>
     <splitpanes @resized="onResized($event)">
-      <pane min-size="10" :size="menuWidth" v-if="hasLeftPanel && (!isMobile && !collapseNav)">
+      <pane min-size="10" :size="menuWidth" v-if="isSlimVersion && (!isMobile && !collapseNav)">
         <side-panel @search="showFuzzySearch"></side-panel>
       </pane>
       <pane min-size="10">
@@ -10,7 +10,7 @@
           <pane class="router-view min-h-screen">
             <router-view></router-view>
           </pane>
-          <template v-if="!isMobile">
+          <template v-if="isSlimVersion && (!isMobile)">
             <pane v-for="other in activeContainers" :key="other.id">
               <log-container
                 :id="other.id"
@@ -27,7 +27,7 @@
     <label
       class="btn btn-circle swap swap-rotate fixed bottom-8 left-4"
       :class="{ '!-left-3': collapseNav }"
-      v-if="hasLeftPanel && (!isMobile)"
+      v-if="isSlimVersion && (!isMobile)"
     >
       <input type="checkbox" v-model="collapseNav" />
       <mdi:chevron-right class="swap-on text-secondary" />
@@ -109,7 +109,7 @@ function onResized(e: any) {
 
 @media screen and (max-width: 768px) {
   .router-view {
-    padding-top: 75px;
+    padding-top: 0px;
   }
 }
 </style>
