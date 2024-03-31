@@ -1,15 +1,16 @@
-import { mount } from "@vue/test-utils";
 import { createTestingPinia } from "@pinia/testing";
+import { mount } from "@vue/test-utils";
+import { containerContext } from "@/composable/containerContext";
+import { useSearchFilter } from "@/composable/search";
+import { settings } from "@/stores/settings";
 // @ts-ignore
 import EventSource, { sources } from "eventsourcemock";
-import LogEventSource from "./LogEventSource.vue";
-import LogViewer from "./LogViewer.vue";
-import { settings } from "@/stores/settings";
-import { useSearchFilter } from "@/composable/search";
-import { vi, describe, expect, beforeEach, test, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { computed, nextTick } from "vue";
+import { createI18n } from "vue-i18n";
 import { createRouter, createWebHistory } from "vue-router";
-import { containerContext } from "@/composable/containerContext";
+import LogEventSource from "./LogEventSource.vue";
+import ContainerLogViewer from "./ContainerLogViewer.vue";
 
 vi.mock("@/stores/config", () => ({
   __esModule: true,
@@ -68,9 +69,9 @@ describe("<LogEventSource />", () => {
 
     return mount(LogEventSource, {
       global: {
-        plugins: [router, createTestingPinia({ createSpy: vi.fn })],
+        plugins: [router, createTestingPinia({ createSpy: vi.fn }), createI18n({})],
         components: {
-          LogViewer,
+          ContainerLogViewer,
         },
         provide: {
           [containerContext as symbol]: {
@@ -82,7 +83,7 @@ describe("<LogEventSource />", () => {
       },
       slots: {
         default: `
-        <template #scoped="params"><log-viewer :messages="params.messages"></log-viewer></template>
+        <template #scoped="params"><container-log-viewer :messages="params.messages" /></template>
         `,
       },
       props: {},
@@ -131,19 +132,6 @@ describe("<LogEventSource />", () => {
       sources[sourceUrl].emitOpen();
       sources[sourceUrl].emitMessage({
         data: `{"ts":1560336942459, "m":"This is a message.", "id":1}`,
-      });
-
-      vi.runAllTimers();
-      await nextTick();
-
-      expect(wrapper.find("ul.events").html()).toMatchSnapshot();
-    });
-
-    test("should render messages with color", async () => {
-      const wrapper = createLogEventSource();
-      sources[sourceUrl].emitOpen();
-      sources[sourceUrl].emitMessage({
-        data: '{"ts":1560336942459,"m":"\\u001b[30mblack\\u001b[37mwhite", "id":1}',
       });
 
       vi.runAllTimers();

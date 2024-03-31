@@ -31,7 +31,7 @@ Dozzle is a small container (4 MB compressed). Pull the latest release with:
 
 The simplest way to use dozzle is to run the docker container. Also, mount the Docker Unix socket with `--volume` to `/var/run/docker.sock`:
 
-    $ docker run --name dozzle -d --volume=/var/run/docker.sock:/var/run/docker.sock -p 8888:8080 amir20/dozzle:latest
+    $ docker run --name dozzle -d --volume=/var/run/docker.sock:/var/run/docker.sock:ro -p 8888:8080 amir20/dozzle:latest
 
 Dozzle will be available at [http://localhost:8888/](http://localhost:8888/).
 
@@ -43,9 +43,9 @@ Here is the Docker Compose file:
         container_name: dozzle
         image: amir20/dozzle:latest
         volumes:
-          - /var/run/docker.sock:/var/run/docker.sock
+          - /var/run/docker.sock:/var/run/docker.sock:ro
         ports:
-          - 8080:8080
+          - 8888:8080
 
 For advanced options like [authentication](https://dozzle.dev/guide/authentication), [remote hosts](https://dozzle.dev/guide/remote-hosts) or common [questions](https://dozzle.dev/guide/faq) see documentation at [dozzle.dev](https://dozzle.dev/guide/getting-started).
 
@@ -76,7 +76,7 @@ If it's not enabled please follow [this tutorial](https://github.com/containers/
 Once you have the podman remote socket you can run Dozzle on podman.
 
 ```
-podman run --volume=/run/user/1000/podman/podman.sock:/var/run/docker.sock -d -p 8080:8080 amir20/dozzle:latest
+podman run --volume=/run/user/1000/podman/podman.sock:/var/run/docker.sock:ro -d -p 8888:8080 amir20/dozzle:latest
 ```
 
 ## Security
@@ -93,19 +93,21 @@ If you do not want to be tracked at all, see the `--no-analytics` flag below.
 
 Dozzle follows the [12-factor](https://12factor.net/) model. Configurations can use the CLI flags or environment variables. The table below outlines all supported options and their respective env vars.
 
-| Flag             | Env Variable           | Default |
-| ---------------- | ---------------------- | ------- |
-| `--addr`         | `DOZZLE_ADDR`          | `:8080` |
-| `--base`         | `DOZZLE_BASE`          | `/`     |
-| `--hostname`     | `DOZZLE_HOSTNAME`      | `""`    |
-| `--level`        | `DOZZLE_LEVEL`         | `info`  |
-| `--filter`       | `DOZZLE_FILTER`        | `""`    |
-| `--username`     | `DOZZLE_USERNAME`      | `""`    |
-| `--password`     | `DOZZLE_PASSWORD`      | `""`    |
-| `--usernamefile` | `DOZZLE_USERNAME_FILE` | `""`    |
-| `--passwordfile` | `DOZZLE_PASSWORD_FILE` | `""`    |
-| `--no-analytics` | `DOZZLE_NO_ANALYTICS`  | false   |
-| `--remote-host`  | `DOZZLE_REMOTE_HOST`   |         |
+| Flag                        | Env Variable                     | Default        |
+| --------------------------- | -------------------------------- | -------------- |
+| `--addr`                    | `DOZZLE_ADDR`                    | `:8080`        |
+| `--base`                    | `DOZZLE_BASE`                    | `/`            |
+| `--hostname`                | `DOZZLE_HOSTNAME`                | `""`           |
+| `--level`                   | `DOZZLE_LEVEL`                   | `info`         |
+| `--auth-provider`           | `DOZZLE_AUTH_PROVIDER`           | `none`         |
+| `--auth-header-user`        | `DOZZLE_AUTH_HEADER_USER`        | `Remote-User`  |
+| `--auth-header-email`       | `DOZZLE_AUTH_HEADER_EMAIL`       | `Remote-Email` |
+| `--auth-header-name`        | `DOZZLE_AUTH_HEADER_NAME`        | `Remote-Name`  |
+| `--enable-actions`          | `DOZZLE_ENABLE_ACTIONS`          | false          |
+| `--wait-for-docker-seconds` | `DOZZLE_WAIT_FOR_DOCKER_SECONDS` | 0              |
+| `--filter`                  | `DOZZLE_FILTER`                  | `""`           |
+| `--no-analytics`            | `DOZZLE_NO_ANALYTICS`            | false          |
+| `--remote-host`             | `DOZZLE_REMOTE_HOST`             |                |
 
 ## Support
 

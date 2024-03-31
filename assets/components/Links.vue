@@ -1,22 +1,10 @@
 <template>
   <div class="flex items-center justify-end gap-4">
-    <template v-if="config.pages">
-      <router-link
-        :to="{ name: 'content-id', params: { id: page.id } }"
-        :title="page.title"
-        v-for="page in config.pages"
-        :key="page.id"
-        class="link-primary"
-      >
-        {{ page.title }}
-      </router-link>
-    </template>
-
     <dropdown class="dropdown-end" @closed="latestTag = latest?.tag ?? config.version">
       <template #trigger>
-        <mdi:announcement class="h-6 w-6 -rotate-12" />
+        <mdi:announcement class="size-6 -rotate-12" />
         <span
-          class="absolute right-px top-0 h-2 w-2 rounded-full bg-red"
+          class="absolute right-px top-0 size-2 rounded-full bg-red"
           v-if="hasUpdate && latestTag != latest?.tag"
         ></span>
       </template>
@@ -27,9 +15,21 @@
       </template>
     </dropdown>
 
+    <router-link
+      :to="{ name: 'settings' }"
+      :aria-label="$t('title.settings')"
+      data-testid="settings"
+      class="btn btn-circle btn-sm"
+    >
+      <mdi:cog class="size-6" />
+    </router-link>
+
     <dropdown class="dropdown-end" v-if="config.user">
       <template #trigger>
-        <img class="h-8 w-8 max-w-none rounded-full p-1 ring-2 ring-base-content/50" :src="config.user.avatar" />
+        <img
+          class="size-6 max-w-none rounded-full p-px ring-1 ring-base-content/60"
+          :src="withBase('/api/profile/avatar')"
+        />
       </template>
       <template #content>
         <div class="p-2">
@@ -42,7 +42,7 @@
         </div>
         <ul class="menu mt-4 p-0">
           <li v-if="config.authProvider === 'simple'">
-            <button @click.prevent="logout()" class="text-primary">{{ $t("button.logout") }}</button>
+            <button @click.prevent="logout()" class="p-2 text-primary">{{ $t("button.logout") }}</button>
           </li>
         </ul>
       </template>
@@ -59,5 +59,5 @@ async function logout() {
 }
 
 const { hasUpdate, latest } = useReleases();
-const latestTag = useStorage("DOZZLE_LATEST_TAG", config.version);
+const latestTag = useProfileStorage("releaseSeen", config.version);
 </script>

@@ -1,8 +1,12 @@
 import type { Config } from "tailwindcss";
 import DaisyUI from "daisyui";
 import Typography from "@tailwindcss/typography";
+import Container from "@tailwindcss/container-queries";
 
 export default {
+  future: {
+    hoverOnlyWhenSupported: true,
+  },
   content: ["./assets/**/*.{vue,js,ts}", "./public/index.html"],
   theme: {
     extend: {
@@ -10,24 +14,21 @@ export default {
         "bounce-fast": "bounce 0.5s 2 both",
       },
       colors: {
-        green: "hsl(177 100% 35%)",
-        red: "hsl(4 90% 58%)",
-        purple: "hsl(291 64% 42%)",
-        blue: "hsl(207 90% 54%)",
-        orange: "hsl(25 95% 53%)",
-        base: "hsl(var(--base-color) / <alpha-value>)",
-        "base-darker": "hsl(var(--base-darker-color) / <alpha-value>)",
-        "base-lighter": "hsl(var(--base-lighter-color) / <alpha-value>)",
-        "base-content": "hsl(var(--base-content-color) / <alpha-value>)",
-
-        primary: "hsl(var(--primary-color) / <alpha-value>)",
-        "primary-focus": "hsl(var(--primary-focus-color) / <alpha-value>)",
-        secondary: "hsl(var(--secondary-color) / <alpha-value>)",
-        "secondary-focus": "hsl(var(--secondary-focus-color) / <alpha-value>)",
+        green: "oklch(69% 0.119722 188.479048)",
+        red: "oklch(64% 0.218 28.85)",
+        purple: "oklch(51.49% 0.215 321.03)",
+        blue: "oklch(65% 0.171 249.5)",
+        orange: "oklch(70% 0.186 48.13)",
+        base: "oklch(var(--base-color) / <alpha-value>)",
+        "base-darker": "oklch(var(--base-darker-color) / <alpha-value>)",
+        "base-lighter": "oklch(var(--base-lighter-color) / <alpha-value>)",
+        "base-content": "oklch(var(--base-content-color) / <alpha-value>)",
+        primary: "oklch(var(--primary-color) / <alpha-value>)",
+        secondary: "oklch(var(--secondary-color) / <alpha-value>)",
       },
     },
   },
-  plugins: [DaisyUI, Typography],
+  plugins: [DaisyUI, Typography, Container],
   daisyui: {
     themes: [],
     base: false,

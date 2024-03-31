@@ -1,63 +1,27 @@
 <template>
-  <ul class="events group py-4" :class="{ 'disable-wrap': !softWrap, [size]: true }">
+  <ul class="events group py-4" :class="{ 'disable-wrap': !softWrap, [size]: true, compact }">
     <li
-      v-for="item in filtered"
+      v-for="item in messages"
       :key="item.id"
       :data-key="item.id"
       :class="{ 'border border-secondary': toRaw(item) === toRaw(lastSelectedItem) }"
+      class="group/entry"
     >
-      <a
-        class="jump-context tooltip-primary tooltip tooltip-right"
-        v-if="isSearching()"
-        data-tip="Jump to Context"
-        @click="handleJumpLineSelected($event, item)"
-        :href="`#${item.id}`"
-      >
-        <ic:sharp-find-in-page />
-      </a>
-      <component :is="item.getComponent()" :log-entry="item" :visible-keys="visibleKeys.value" />
+      <component :is="item.getComponent()" :log-entry="item" :visible-keys="visibleKeys" />
     </li>
   </ul>
 </template>
 
 <script lang="ts" setup>
 import { toRaw } from "vue";
-import { useRouteHash } from "@vueuse/router";
 
 import { type JSONObject, LogEntry } from "@/models/LogEntry";
 
-const props = defineProps<{
+defineProps<{
   messages: LogEntry<string | JSONObject>[];
+  visibleKeys: string[][];
+  lastSelectedItem: LogEntry<string | JSONObject> | undefined;
 }>();
-
-const { container } = useContainerContext();
-
-let visibleKeys = persistentVisibleKeys(container);
-
-const { filteredPayload } = useVisibleFilter(visibleKeys);
-const { filteredMessages, resetSearch, isSearching } = useSearchFilter();
-
-const { messages } = toRefs(props);
-const visible = filteredPayload(messages);
-const filtered = filteredMessages(visible);
-
-let lastSelectedItem: LogEntry<string | JSONObject> | undefined = $ref(undefined);
-
-function handleJumpLineSelected(e: Event, item: LogEntry<string | JSONObject>) {
-  lastSelectedItem = item;
-  resetSearch();
-}
-
-const routeHash = useRouteHash();
-watch(
-  routeHash,
-  (hash) => {
-    if (hash) {
-      document.querySelector(`[data-key="${hash.substring(1)}"]`)?.scrollIntoView({ block: "center" });
-    }
-  },
-  { immediate: true, flush: "post" },
-);
 </script>
 <style scoped lang="postcss">
 .events {
@@ -72,13 +36,13 @@ watch(
     monospace;
 
   > li {
-    @apply flex break-words px-4 py-1 last:snap-end odd:bg-gray-400/[0.07];
+    @apply flex break-words px-2 py-1 last:snap-end odd:bg-gray-400/[0.07] md:px-4;
     &:last-child {
       scroll-margin-block-end: 5rem;
     }
 
     .jump-context {
-      @apply mr-2 flex items-center font-sans text-secondary hover:text-secondary-focus;
+      @apply mr-2 flex items-center font-sans text-secondary;
     }
   }
 
@@ -92,6 +56,12 @@ watch(
 
   &.large {
     @apply text-lg;
+  }
+
+  &.compact {
+    > li {
+      @apply py-0;
+    }
   }
 }
 </style>

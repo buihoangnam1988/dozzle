@@ -4,8 +4,13 @@ toolbar:
   search: Buscar
   show: Mostrar sólo {std}
   show-all: Mostrar todos los flujos
+  stop: Detener
+  start: Iniciar
+  restart: Reiniciar
 label:
   containers: Contenedores
+  running-containers: Contenedores en ejecución
+  all-containers: Todos los contenedores
   total-containers: Contenedores Totales
   running: En ejecución
   total-cpu-usage: Uso total del Procesador
@@ -20,6 +25,7 @@ label:
   created: Creado
   avg-cpu: Promedio de CPU (%)
   avg-mem: Promedio de MEM (%)
+  pinned: Fijado
 tooltip:
   search: Buscar contenedores (⌘ + K, CTRL + K)
   pin-column: Anclar como columna
@@ -58,9 +64,11 @@ placeholder:
   search-containers: Buscar contenedores (⌘ + K, CTRL + K)
 settings:
   display: Vista
+  locale: Sobrescribir idioma
   small-scrollbars: Utilizar barras de desplazamiento más pequeñas
   show-timesamps: Mostrar marcas de tiempo
   soft-wrap: Líneas de texto con ajuste suave
+  datetime-format: Sobrescribir el formato de fecha y hora
   12-24-format: >-
     Por defecto, Dozzle utilizará la configuración regional de tu navegador para formatear la hora. Usted puede
     forzar el estilo de 12 o 24 horas.
@@ -76,3 +84,19 @@ settings:
     <a href="{href}" target="_blank" rel="noreferrer noopener">{nextVersion}</a>.
   show-std: Mostrar etiquetas de salida estándar y salida de error estándar
   automatic-redirect: Redireccionar automáticamente a nuevos contenedores con el mismo nombre
+  compact: Modo compacto
+releases:
+  features: Características
+  bugFixes: Correcciones de errores
+  breaking: Cambios importantes
+  three_parts: "{features}, {bugFixes} y {breaking}"
+  two_parts: "{features} y {bugFixes}"
+  latest: Último
+  no_releases: No hay lanzamientos
+log_actions:
+  copy_log: Copiar registro
+  jump_to_context: Ir al contexto
+toasts:
+  copied:
+    title: Copiado
+    message: Registro copiado al portapapeles

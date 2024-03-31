@@ -1,16 +1,19 @@
 package web
 
 import (
-	"encoding/json"
 	"html/template"
 	"io"
+	"mime"
+	"path/filepath"
 	"sort"
+	"strings"
+
+	"github.com/goccy/go-json"
 
 	"net/http"
 	"path"
 
 	"github.com/amir20/dozzle/internal/auth"
-	"github.com/amir20/dozzle/internal/content"
 	"github.com/amir20/dozzle/internal/docker"
 	"github.com/amir20/dozzle/internal/profile"
 
@@ -18,14 +21,19 @@ import (
 )
 
 func (h *handler) index(w http.ResponseWriter, req *http.Request) {
-	_, err := h.content.Open(req.URL.Path)
+	path := req.URL.Path
+	_, err := h.content.Open(path)
 	if err == nil && req.URL.Path != "" && req.URL.Path != "/" {
-		fileServer.ServeHTTP(w, req)
-	} else {
-		if !isAuthorized(req) && req.URL.Path != "login" {
-			http.Redirect(w, req, path.Clean(h.config.Base+"/login"), http.StatusTemporaryRedirect)
-			return
+		w.Header().Set("Cache-Control", "max-age=31536000, immutable")
+		// if brotli is enabled, then just send over the compressed file
+		if file, err := h.content.Open(path + ".br"); strings.Contains(req.Header.Get("Accept-Encoding"), "br") && err == nil {
+			w.Header().Set("Content-Encoding", "br")
+			w.Header().Set("Content-Type", mime.TypeByExtension(filepath.Ext(path)))
+			io.Copy(w, file)
+		} else {
+			fileServer.ServeHTTP(w, req)
 		}
+	} else {
 		h.executeTemplate(w, req)
 	}
 }
@@ -44,34 +52,23 @@ func (h *handler) executeTemplate(w http.ResponseWriter, req *http.Request) {
 	})
 
 	config := map[string]interface{}{
-		"base":                base,
-		"version":             h.config.Version,
-		"authorizationNeeded": h.isAuthorizationNeeded(req),
-		"secured":             secured,
-		"hostname":            h.config.Hostname,
-		"hosts":               hosts,
-		"authProvider":        h.config.AuthProvider,
-	}
-
-	pages, err := content.ReadAll()
-	if err != nil {
-		log.Errorf("error reading content: %v", err)
-	} else if len(pages) > 0 {
-		for _, page := range pages {
-			page.Content = ""
-		}
-		config["pages"] = pages
+		"base":          base,
+		"version":       h.config.Version,
+		"hostname":      h.config.Hostname,
+		"hosts":         hosts,
+		"authProvider":  h.config.Authorization.Provider,
+		"enableActions": h.config.EnableActions,
 	}
 
 	user := auth.UserFromContext(req.Context())
 	if user != nil {
-		if settings, err := profile.LoadUserSettings(*user); err == nil {
-			config["serverSettings"] = settings
+		if profile, err := profile.Load(*user); err == nil {
+			config["profile"] = profile
 		} else {
-			config["serverSettings"] = struct{}{}
+			config["profile"] = struct{}{}
 		}
 		config["user"] = user
-	} else if h.config.AuthProvider == FORWARD_PROXY {
+	} else if h.config.Authorization.Provider == FORWARD_PROXY {
 		log.Error("Unable to find remote user. Please check your proxy configuration. Expecting headers Remote-Email, Remote-User, Remote-Name.")
 		log.Debugf("Dumping all headers for url /%s", req.URL.String())
 		for k, v := range req.Header {
@@ -79,9 +76,9 @@ func (h *handler) executeTemplate(w http.ResponseWriter, req *http.Request) {
 		}
 		http.Error(w, "Unauthorized user", http.StatusUnauthorized)
 		return
-	} else if h.config.AuthProvider == SIMPLE && req.URL.Path != "login" {
+	} else if h.config.Authorization.Provider == SIMPLE && req.URL.Path != "login" {
 		log.Debugf("Redirecting to login page for url /%s", req.URL.String())
-		http.Redirect(w, req, path.Clean(h.config.Base+"/login"), http.StatusTemporaryRedirect)
+		http.Redirect(w, req, path.Clean(h.config.Base+"/login")+"?redirectUrl=/"+req.URL.String(), http.StatusTemporaryRedirect)
 		return
 	}
 
@@ -125,19 +122,19 @@ func (h *handler) readManifest() map[string]interface{} {
 	if h.config.Dev {
 		return map[string]interface{}{}
 	} else {
-		file, err := h.content.Open("manifest.json")
+		file, err := h.content.Open(".vite/manifest.json")
 		if err != nil {
 			// this should only happen during test. In production, the file is embedded in the binary and checked in main.go
 			return map[string]interface{}{}
 		}
 		bytes, err := io.ReadAll(file)
 		if err != nil {
-			log.Fatalf("Could not read manifest.json: %v", err)
+			log.Fatalf("Could not read .vite/manifest.json: %v", err)
 		}
 		var manifest map[string]interface{}
 		err = json.Unmarshal(bytes, &manifest)
 		if err != nil {
-			log.Fatalf("Could not parse manifest.json: %v", err)
+			log.Fatalf("Could not parse .vite/manifest.json: %v", err)
 		}
 		return manifest
 	}

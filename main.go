@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"embed"
+	"errors"
 	"io/fs"
 	"net/http"
 	"os"
@@ -27,16 +28,6 @@ var (
 	version = "head"
 )
 
-type DockerSecret struct {
-	Value string
-}
-
-func (s *DockerSecret) UnmarshalText(b []byte) error {
-	v, err := os.ReadFile(string(b))
-	s.Value = strings.Trim(string(v), "\r\n")
-	return err
-}
-
 type args struct {
 	Addr                 string              `arg:"env:DOZZLE_ADDR" default:":8080" help:"sets host:port to bind for server. This is rarely needed inside a docker container."`
 	Base                 string              `arg:"env:DOZZLE_BASE" default:"/" help:"sets the base for http router."`
@@ -44,15 +35,17 @@ type args struct {
 	Level                string              `arg:"env:DOZZLE_LEVEL" default:"info" help:"set Dozzle log level. Use debug for more logging."`
 	Username             string              `arg:"env:DOZZLE_USERNAME" help:"sets the username for auth."`
 	Password             string              `arg:"env:DOZZLE_PASSWORD" help:"sets password for auth"`
-	UsernameFile         *DockerSecret       `arg:"env:DOZZLE_USERNAME_FILE" help:"sets the secret path read username for auth."`
-	PasswordFile         *DockerSecret       `arg:"env:DOZZLE_PASSWORD_FILE" help:"sets the secret path read password for auth"`
-	NoAnalytics          bool                `arg:"--no-analytics,env:DOZZLE_NO_ANALYTICS" help:"disables anonymous analytics"`
+	AuthProvider         string              `arg:"--auth-provider,env:DOZZLE_AUTH_PROVIDER" default:"none" help:"sets the auth provider to use. Currently only forward-proxy is supported."`
+	AuthHeaderUser       string              `arg:"--auth-header-user,env:DOZZLE_AUTH_HEADER_USER" default:"Remote-User" help:"sets the HTTP Header to use for username in Forward Proxy configuration."`
+	AuthHeaderEmail      string              `arg:"--auth-header-email,env:DOZZLE_AUTH_HEADER_EMAIL" default:"Remote-Email" help:"sets the HTTP Header to use for email in Forward Proxy configuration."`
+	AuthHeaderName       string              `arg:"--auth-header-name,env:DOZZLE_AUTH_HEADER_NAME" default:"Remote-Name" help:"sets the HTTP Header to use for name in Forward Proxy configuration."`
 	WaitForDockerSeconds int                 `arg:"--wait-for-docker-seconds,env:DOZZLE_WAIT_FOR_DOCKER_SECONDS" help:"wait for docker to be available for at most this many seconds before starting the server."`
+	EnableActions        bool                `arg:"--enable-actions,env:DOZZLE_ENABLE_ACTIONS" default:"false" help:"enables essential actions on containers from the web interface."`
 	FilterStrings        []string            `arg:"env:DOZZLE_FILTER,--filter,separate" help:"filters docker containers using Docker syntax."`
 	Filter               map[string][]string `arg:"-"`
 	Healthcheck          *HealthcheckCmd     `arg:"subcommand:healthcheck" help:"checks if the server is running."`
 	RemoteHost           []string            `arg:"env:DOZZLE_REMOTE_HOST,--remote-host,separate" help:"list of hosts to connect remotely"`
-	AuthProvider         string              `arg:"--auth-provider,env:DOZZLE_AUTH_PROVIDER" default:"none" help:"sets the auth provider to use. Currently only forward-proxy is supported."`
+	NoAnalytics          bool                `arg:"--no-analytics,env:DOZZLE_NO_ANALYTICS" help:"disables anonymous analytics"`
 }
 
 type HealthcheckCmd struct {
@@ -62,7 +55,7 @@ func (args) Version() string {
 	return version
 }
 
-//go:embed dist
+//go:embed all:dist
 var content embed.FS
 
 func main() {
@@ -72,6 +65,7 @@ func main() {
 		if err := healthcheck.HttpRequest(args.Addr, args.Base); err != nil {
 			log.Fatal(err)
 		}
+		os.Exit(0)
 	}
 
 	if args.AuthProvider != "none" && args.AuthProvider != "forward-proxy" && args.AuthProvider != "simple" {
@@ -115,35 +109,24 @@ func doStartEvent(arg args) {
 		log.Debug("Analytics disabled.")
 		return
 	}
-	host, err := os.Hostname()
-	if err != nil {
-		log.Debug(err)
-		return
+
+	event := analytics.BeaconEvent{
+		Name:    "start",
+		Version: version,
 	}
 
-	event := analytics.StartEvent{
-		ClientId:         host,
-		Version:          version,
-		FilterLength:     len(arg.Filter),
-		CustomAddress:    arg.Addr != ":8080",
-		CustomBase:       arg.Base != "/",
-		RemoteHostLength: len(arg.RemoteHost),
-		Protected:        arg.Username != "",
-		HasHostname:      arg.Hostname != "",
-	}
-
-	if err := analytics.SendStartEvent(event); err != nil {
+	if err := analytics.SendBeacon(event); err != nil {
 		log.Debug(err)
 	}
 }
 
 func createClients(args args,
-	localClientFactory func(map[string][]string) (*docker.Client, error),
-	remoteClientFactory func(map[string][]string, docker.Host) (*docker.Client, error),
-	hostname string) map[string]web.DockerClient {
-	clients := make(map[string]web.DockerClient)
+	localClientFactory func(map[string][]string) (docker.Client, error),
+	remoteClientFactory func(map[string][]string, docker.Host) (docker.Client, error),
+	hostname string) map[string]docker.Client {
+	clients := make(map[string]docker.Client)
 
-	if localClient := createLocalClient(args, localClientFactory); localClient != nil {
+	if localClient, err := createLocalClient(args, localClientFactory); err == nil {
 		if hostname != "" {
 			localClient.Host().Name = hostname
 		}
@@ -172,14 +155,14 @@ func createClients(args args,
 	return clients
 }
 
-func createServer(args args, clients map[string]web.DockerClient) *http.Server {
+func createServer(args args, clients map[string]docker.Client) *http.Server {
 	_, dev := os.LookupEnv("DEV")
 
 	var provider web.AuthProvider = web.NONE
 	var authorizer web.Authorizer
 	if args.AuthProvider == "forward-proxy" {
 		provider = web.FORWARD_PROXY
-		authorizer = auth.NewForwardProxyAuth()
+		authorizer = auth.NewForwardProxyAuth(args.AuthHeaderUser, args.AuthHeaderEmail, args.AuthHeaderName)
 	} else if args.AuthProvider == "simple" {
 		provider = web.SIMPLE
 
@@ -199,16 +182,17 @@ func createServer(args args, clients map[string]web.DockerClient) *http.Server {
 	}
 
 	config := web.Config{
-		Addr:         args.Addr,
-		Base:         args.Base,
-		Version:      version,
-		Username:     args.Username,
-		Password:     args.Password,
-		Hostname:     args.Hostname,
-		NoAnalytics:  args.NoAnalytics,
-		Dev:          dev,
-		AuthProvider: provider,
-		Authorizer:   authorizer,
+		Addr:        args.Addr,
+		Base:        args.Base,
+		Version:     version,
+		Hostname:    args.Hostname,
+		NoAnalytics: args.NoAnalytics,
+		Dev:         dev,
+		Authorization: web.Authorization{
+			Provider:   provider,
+			Authorizer: authorizer,
+		},
+		EnableActions: args.EnableActions,
 	}
 
 	assets, err := fs.Sub(content, "dist")
@@ -227,8 +211,8 @@ func createServer(args args, clients map[string]web.DockerClient) *http.Server {
 	}
 
 	if !dev {
-		if _, err := assets.Open("manifest.json"); err != nil {
-			log.Fatal("manifest.json not found")
+		if _, err := assets.Open(".vite/manifest.json"); err != nil {
+			log.Fatal(".vite/manifest.json not found")
 		}
 		if _, err := assets.Open("index.html"); err != nil {
 			log.Fatal("index.html not found")
@@ -238,16 +222,16 @@ func createServer(args args, clients map[string]web.DockerClient) *http.Server {
 	return web.CreateServer(clients, assets, config)
 }
 
-func createLocalClient(args args, localClientFactory func(map[string][]string) (*docker.Client, error)) *docker.Client {
+func createLocalClient(args args, localClientFactory func(map[string][]string) (docker.Client, error)) (docker.Client, error) {
 	for i := 1; ; i++ {
 		dockerClient, err := localClientFactory(args.Filter)
 		if err == nil {
 			_, err := dockerClient.ListContainers()
 			if err != nil {
-				log.Warnf("Could not connect to local Docker Engine: %s", err)
+				log.Debugf("Could not connect to local Docker Engine: %s", err)
 			} else {
 				log.Debugf("Connected to local Docker Engine")
-				return dockerClient
+				return dockerClient, nil
 			}
 		}
 		if args.WaitForDockerSeconds > 0 {
@@ -259,7 +243,7 @@ func createLocalClient(args args, localClientFactory func(map[string][]string) (
 			break
 		}
 	}
-	return nil
+	return nil, errors.New("could not connect to local Docker Engine")
 }
 
 func parseArgs() args {
@@ -280,19 +264,8 @@ func parseArgs() args {
 		args.Filter[key] = append(args.Filter[key], val)
 	}
 
-	if args.Username == "" && args.UsernameFile != nil {
-		args.Username = args.UsernameFile.Value
-	}
-
-	if args.Password == "" && args.PasswordFile != nil {
-		args.Password = args.PasswordFile.Value
-	}
-
 	if args.Username != "" || args.Password != "" {
-		log.Warn("Using --username and --password is being deprecated and removed in v6.x. Use --auth-provider instead. See https://dozzle.dev/guide/authentication#file-based-user-management for more information.")
-		if args.Username == "" || args.Password == "" {
-			log.Fatalf("Username AND password are required for authentication")
-		}
+		log.Fatal("Using --username and --password is removed on v6.x. See https://github.com/amir20/dozzle/issues/2630 for details.")
 	}
 	return args
 }
@@ -305,7 +278,6 @@ func configureLogger(level string) {
 	}
 
 	log.SetFormatter(&log.TextFormatter{
-		DisableTimestamp:       true,
 		DisableLevelTruncation: true,
 	})
 

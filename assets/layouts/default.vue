@@ -1,8 +1,8 @@
 <template>
-  <div v-if="!authorizationNeeded">
-    <mobile-menu v-if="isSlimVersion && isMobile" @search="showFuzzySearch"></mobile-menu>
+  <div>
+    <mobile-menu v-if="isSlimVersion && isMobile && !forceMenuHidden" @search="showFuzzySearch"></mobile-menu>
     <splitpanes @resized="onResized($event)">
-      <pane min-size="10" :size="menuWidth" v-if="isSlimVersion && (!isMobile && !collapseNav)">
+      <pane min-size="10" :size="menuWidth" v-if="isSlimVersion && !isMobile && !collapseNav && !forceMenuHidden">
         <side-panel @search="showFuzzySearch"></side-panel>
       </pane>
       <pane min-size="10">
@@ -25,12 +25,12 @@
       </pane>
     </splitpanes>
     <label
-      class="btn btn-circle swap swap-rotate fixed bottom-8 left-4"
-      :class="{ '!-left-3': collapseNav }"
-      v-if="isSlimVersion && (!isMobile)"
+      class="btn btn-circle swap btn-neutral swap-rotate fixed -left-12 bottom-4 w-16 transition-all hover:-left-4"
+      :class="{ '!-left-6': collapseNav }"
+      v-if="isSlimVersion && !isMobile && !forceMenuHidden"
     >
       <input type="checkbox" v-model="collapseNav" />
-      <mdi:chevron-right class="swap-on text-secondary" />
+      <mdi:chevron-right class="swap-on" />
       <mdi:chevron-left class="swap-off" />
     </label>
   </div>
@@ -47,13 +47,18 @@
       class="alert max-w-xl"
       v-for="toast in toasts"
       :key="toast.id"
-      :class="{ 'alert-error': toast.type === 'error', 'alert-info': toast.type === 'info' }"
+      :class="{
+        'alert-error': toast.type === 'error',
+        'alert-info': toast.type === 'info',
+        'alert-warning': toast.type === 'warning',
+      }"
     >
-      <carbon:information class="h-6 w-6 shrink-0 stroke-current" v-if="toast.type === 'info'" />
-      <carbon:warning class="h-6 w-6 shrink-0 stroke-current" v-else-if="toast.type === 'error'" />
+      <carbon:information class="size-6 shrink-0 stroke-current" v-if="toast.type === 'info'" />
+      <carbon:warning class="size-6 shrink-0 stroke-current" v-else-if="toast.type === 'error'" />
+      <carbon:warning class="size-6 shrink-0 stroke-current" v-else-if="toast.type === 'warning'" />
       <div>
         <h3 class="text-lg font-bold" v-if="toast.title">{{ toast.title }}</h3>
-        {{ toast.message }}
+        <div v-html="toast.message" class="[&>a]:underline"></div>
       </div>
       <div>
         <button class="btn btn-circle btn-xs" @click="removeToast(toast.id)"><mdi:close /></button>
@@ -66,7 +71,6 @@
 // @ts-ignore - splitpanes types are not available
 import { Splitpanes, Pane } from "splitpanes";
 import { collapseNav } from "@/stores/settings";
-const { authorizationNeeded } = config;
 
 const containerStore = useContainerStore();
 const { activeContainers } = storeToRefs(containerStore);
@@ -75,6 +79,8 @@ const { toasts, removeToast } = useToast();
 
 const modal = ref<HTMLDialogElement>();
 const open = ref(false);
+const searchParams = new URLSearchParams(window.location.search);
+const forceMenuHidden = ref(searchParams.has("hideMenu"));
 
 watch(open, () => {
   if (open.value) {

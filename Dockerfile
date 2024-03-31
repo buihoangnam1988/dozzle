@@ -14,7 +14,7 @@ COPY package.json ./
 RUN pnpm install --offline --ignore-scripts --no-optional
 
 # Copy assets and translations to build
-COPY .* *.config.ts *.config.js ./
+COPY .* *.config.ts *.config.js *.config.cjs ./
 COPY assets ./assets
 COPY locales ./locales
 COPY public ./public
@@ -22,7 +22,7 @@ COPY public ./public
 # Build assets
 RUN pnpm build
 
-FROM --platform=$BUILDPLATFORM golang:1.21.4-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.22.1-alpine AS builder
 
 RUN apk add --no-cache ca-certificates && mkdir /dozzle
 
