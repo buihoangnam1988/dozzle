@@ -1,4 +1,4 @@
-name: Docker Image CI
+name: BHN Docker Image CI
 
 on:
   #push:
