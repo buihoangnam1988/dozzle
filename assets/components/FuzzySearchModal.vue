@@ -1,36 +1,43 @@
 <template>
   <div class="dropdown dropdown-open w-full">
     <div class="input input-primary flex h-auto items-center">
-      <mdi:magnify class="flex h-8 w-8" />
+      <mdi:magnify class="flex size-8" />
       <input
         tabindex="0"
-        class="input input-ghost input-lg flex-1 px-1"
+        class="input input-lg input-ghost flex-1 px-1"
         ref="input"
-        @keyup.down="selectedIndex = Math.min(selectedIndex + 1, data.length - 1)"
-        @keyup.up="selectedIndex = Math.max(selectedIndex - 1, 0)"
-        @keyup.enter.exact="selected(data[selectedIndex])"
-        @keyup.alt.enter="addColumn(data[selectedIndex])"
+        @keydown.down="selectedIndex = Math.min(selectedIndex + 1, data.length - 1)"
+        @keydown.up="selectedIndex = Math.max(selectedIndex - 1, 0)"
+        @keydown.enter.exact="selected(data[selectedIndex].item)"
+        @keydown.alt.enter="addColumn(data[selectedIndex])"
         v-model="query"
         :placeholder="$t('placeholder.search-containers')"
       />
       <mdi:keyboard-esc class="flex" />
     </div>
-    <ul tabindex="0" class="menu dropdown-content rounded-box !relative mt-2 w-full bg-base-lighter p-2">
-      <li v-for="(item, index) in data">
+    <ul tabindex="0" class="menu dropdown-content !relative mt-2 w-full rounded-box bg-base-lighter p-2">
+      <li v-for="(result, index) in data">
         <a
           class="grid auto-cols-max grid-cols-[min-content,auto] gap-2 py-4"
-          @click.prevent="selected(item)"
+          @click.prevent="selected(result.item)"
           @mouseenter="selectedIndex = index"
           :class="index === selectedIndex ? 'focus' : ''"
         >
-          <div :class="{ 'text-primary': item.state === 'running' }">
+          <div :class="{ 'text-primary': result.item.state === 'running' }">
             <octicon:container-24 />
           </div>
           <div class="truncate">
-            <span class="font-light">{{ item.host }}</span> / {{ item.name }}
+            <template v-if="config.hosts.length > 1">
+              <span class="font-light">{{ result.item.host }}</span> /
+            </template>
+            <span data-name v-html="matchedName(result)"></span>
           </div>
-          <distance-time :date="item.created" class="ml-auto text-xs font-light" />
-          <a @click.stop.prevent="addColumn(item)" :title="$t('tooltip.pin-column')" class="hover:text-secondary">
+          <distance-time :date="result.item.created" class="text-xs font-light" />
+          <a
+            @click.stop.prevent="addColumn(result.item)"
+            :title="$t('tooltip.pin-column')"
+            class="hover:text-secondary"
+          >
             <ic:sharp-keyboard-return v-if="index === selectedIndex" />
             <cil:columns v-else />
           </a>
@@ -42,8 +49,9 @@
 
 <script lang="ts" setup>
 import { useFuse } from "@vueuse/integrations/useFuse";
+import { type FuseResultMatch } from "fuse.js";
 
-const { maxResults: resultLimit = 5 } = defineProps<{
+const { maxResults = 5 } = defineProps<{
   maxResults?: number;
 }>();
 
@@ -58,44 +66,46 @@ const store = useContainerStore();
 const { containers } = storeToRefs(store);
 
 const list = computed(() => {
-  return containers.value.map(({ id, created, name, state, hostLabel: host }) => {
+  return containers.value.map(({ id, created, name, state, labels, hostLabel: host }) => {
     return {
       id,
       created,
       name,
       state,
       host,
+      labels: Object.entries(labels).map(([_, value]) => value),
     };
   });
 });
 
 const { results } = useFuse(query, list, {
   fuseOptions: {
-    keys: ["name", "host"],
+    keys: ["name", "host", "labels"],
     includeScore: true,
     useExtendedSearch: true,
+    threshold: 0.3,
+    includeMatches: true,
   },
-  resultLimit,
+  resultLimit: 10,
   matchAllWhenSearchEmpty: true,
 });
 
 const data = computed(() => {
   return results.value
-    .sort((a, b) => {
+    .toSorted((a, b) => {
       if (a.score === b.score) {
-        if (a.item.state === "running" && b.item.state !== "running") {
+        if (a.item.state === b.item.state) {
+          return b.item.created - a.item.created;
+        } else if (a.item.state === "running" && b.item.state !== "running") {
           return -1;
         } else {
           return 1;
         }
-      } else if (a.score && b.score) {
-        return a.score - b.score;
       } else {
-        return 0;
+        return a.score - b.score;
       }
     })
-    .map(({ item }) => item)
-    .slice(0, resultLimit);
+    .slice(0, maxResults);
 });
 
 watch(query, (data) => {
@@ -114,6 +124,32 @@ function addColumn(container: { id: string }) {
   store.appendActiveContainer(container);
   close();
 }
+
+function matchedName({ item, matches = [] }: { item: { name: string }; matches?: FuseResultMatch[] }) {
+  const matched = matches.find((match) => match.key === "name");
+  if (matched) {
+    const { indices } = matched;
+    const result = [];
+    let lastIndex = 0;
+    for (const [start, end] of indices) {
+      result.push(item.name.slice(lastIndex, start));
+      result.push(`<mark>${item.name.slice(start, end + 1)}</mark>`);
+      lastIndex = end + 1;
+    }
+    result.push(item.name.slice(lastIndex));
+    return result.join("");
+  } else {
+    return item.name;
+  }
+}
 </script>
 
-<style scoped lang="postcss"></style>
+<style scoped lang="postcss">
+:deep(mark) {
+  @apply bg-transparent text-inherit underline underline-offset-2;
+}
+
+.menu a {
+  @apply transition-none duration-0;
+}
+</style>

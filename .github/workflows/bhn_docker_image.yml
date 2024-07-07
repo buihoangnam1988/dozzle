@@ -1,0 +1,27 @@
+name: BHN Docker Image CI
+
+on:
+  #push:
+  #  branches: [ "master" ]
+  pull_request:
+    branches: [ "nam_dev_hidepanel" ]
+
+jobs:
+  buildnpush:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@4fd812986e6c8c2a69e18311145f9371337f27d4 # v3.4.0
+      - name: Login to DockerHub
+        uses: docker/login-action@v3.2.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Writing certs to file
+        run: |
+          echo "${{ secrets.TTL_KEY }}" > shared_key.pem
+          echo "${{ secrets.TTL_CERT }}" > shared_cert.pem
+      - name: Build the Docker image
+        run: docker buildx build . --file Dockerfile --tag bhnam1988/bigs.dozzle:$(date +%s) --platform linux/amd64

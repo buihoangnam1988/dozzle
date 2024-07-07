@@ -3,7 +3,7 @@ services:
   custom_base:
     container_name: custom_base
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       - DOZZLE_FILTER=name=custom_base
       - DOZZLE_BASE=/foobarbase
@@ -12,23 +12,20 @@ services:
       - 8080:8080
     build:
       context: .
-  auth:
-    container_name: auth
+  simple-auth:
+    container_name: simple-auth
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./e2e/data:/data
     environment:
-      - DOZZLE_FILTER=name=auth
-      - DOZZLE_USERNAME=foo
-      - DOZZLE_PASSWORD=bar
+      - DOZZLE_AUTH_PROVIDER=simple
       - DOZZLE_NO_ANALYTICS=1
-    ports:
-      - 9090:8080
     build:
       context: .
   dozzle:
     container_name: dozzle
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       - DOZZLE_FILTER=name=dozzle
       - DOZZLE_NO_ANALYTICS=1
@@ -53,7 +50,7 @@ services:
     container_name: proxy
     image: tecnativa/docker-socket-proxy
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       - CONTAINERS=1
     ports:
@@ -61,7 +58,7 @@ services:
 
   playwright:
     container_name: playwright
-    image: mcr.microsoft.com/playwright:v1.39.0-jammy
+    image: mcr.microsoft.com/playwright:v1.42.1-jammy
     working_dir: /app
     volumes:
       - .:/app
@@ -72,5 +69,4 @@ services:
     depends_on:
       - dozzle
       - custom_base
-      - auth
       - remote

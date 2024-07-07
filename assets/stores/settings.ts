@@ -1,9 +1,9 @@
 import { toRefs } from "@vueuse/core";
-const DOZZLE_SETTINGS_KEY = "DOZZLE_SETTINGS";
 
 export type Settings = {
   search: boolean;
   size: "small" | "medium" | "large";
+  compact: boolean;
   menuWidth: number;
   smallerScrollbars: boolean;
   showTimestamp: boolean;
@@ -11,12 +11,15 @@ export type Settings = {
   showAllContainers: boolean;
   lightTheme: "auto" | "dark" | "light";
   hourStyle: "auto" | "24" | "12";
+  dateLocale: "auto" | "en-US" | "en-GB" | "de-DE" | "en-CA";
   softWrap: boolean;
   collapseNav: boolean;
   automaticRedirect: boolean;
+  locale: string;
 };
 export const DEFAULT_SETTINGS: Settings = {
   search: true,
+  compact: false,
   size: "medium",
   menuWidth: 15,
   smallerScrollbars: false,
@@ -25,27 +28,21 @@ export const DEFAULT_SETTINGS: Settings = {
   showAllContainers: false,
   lightTheme: "auto",
   hourStyle: "auto",
+  dateLocale: "auto",
   softWrap: true,
   collapseNav: false,
   automaticRedirect: true,
+  locale: "",
 };
 
-export const settings = useStorage(DOZZLE_SETTINGS_KEY, DEFAULT_SETTINGS);
-settings.value = { ...DEFAULT_SETTINGS, ...settings.value, ...config.serverSettings };
-
-if (config.user) {
-  watch(settings, (value) => {
-    fetch(withBase("/api/profile/settings"), {
-      method: "PUT",
-      body: JSON.stringify(value),
-    });
-  });
-}
+export const settings = useProfileStorage("settings", DEFAULT_SETTINGS);
 
 export const {
   collapseNav,
+  compact,
   softWrap,
   hourStyle,
+  dateLocale,
   lightTheme,
   showAllContainers,
   showTimestamp,
@@ -54,5 +51,6 @@ export const {
   menuWidth,
   size,
   search,
+  locale,
   automaticRedirect,
 } = toRefs(settings);

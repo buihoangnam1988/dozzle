@@ -2,10 +2,10 @@ package healthcheck
 
 import (
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"net/http"
-	"os"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func HttpRequest(addr string, base string) error {
@@ -13,7 +13,16 @@ func HttpRequest(addr string, base string) error {
 		addr = "localhost" + addr
 	}
 
-	url := fmt.Sprintf("http://%s%s/healthcheck", addr, base)
+	if base == "/" {
+		base = ""
+	}
+
+	url := fmt.Sprintf("%s%s/healthcheck", addr, base)
+
+	if !strings.HasPrefix(url, "http") {
+		url = "http://" + url
+	}
+
 	log.Info("Checking health of " + url)
 	resp, err := http.Get(url)
 
@@ -23,10 +32,8 @@ func HttpRequest(addr string, base string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == 200 {
-		os.Exit(0)
+		return nil
 	}
 
-	os.Exit(1)
-
-	return nil
+	return fmt.Errorf("healthcheck failed with status code %d", resp.StatusCode)
 }

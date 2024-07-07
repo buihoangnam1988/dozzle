@@ -2,13 +2,13 @@
   <section :class="{ 'h-screen min-h-0': scrollable }" class="flex flex-col">
     <header
       v-if="$slots.header"
-      class="sticky top-[70px] z-[2] border-b border-base-content/10 bg-base py-2 shadow-[1px_1px_2px_0_rgb(0,0,0,0.05)] md:top-0"
+      class="sticky top-[00px] z-[2] border-b border-base-content/10 bg-base py-2 shadow-[1px_1px_2px_0_rgb(0,0,0,0.05)] md:top-0"
     >
       <slot name="header"></slot>
     </header>
     <main :data-scrolling="scrollable ? true : undefined" class="snap-y overflow-auto">
       <div class="invisible mr-28 text-right md:visible" v-show="paused">
-        <scroll-progress :indeterminate="loading" :auto-hide="!loading" class="z-2 !fixed top-16" />
+        <scroll-progress :indeterminate="loading" :auto-hide="!loading" class="!fixed top-16 z-10" />
       </div>
       <div ref="scrollableContent">
         <slot :setLoading="setLoading"></slot>
@@ -20,8 +20,8 @@
     <div class="mr-16 text-right">
       <transition name="fade">
         <button
-          class="fixed bottom-8 rounded bg-primary p-3 text-primary-content shadow transition-colors hover:bg-primary-focus"
-          :class="hasMore ? 'animate-bounce-fast bg-secondary text-secondary-content hover:bg-secondary-focus' : ''"
+          class="btn btn-primary fixed bottom-8 rounded p-3 text-primary-content shadow transition-colors"
+          :class="hasMore ? 'btn-secondary animate-bounce-fast text-secondary-content' : ''"
           @click="scrollToBottom()"
           v-show="paused"
         >

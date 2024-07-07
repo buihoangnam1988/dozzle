@@ -17,12 +17,17 @@ import (
 
 type MockedClient struct {
 	mock.Mock
-	DockerClient
+	docker.Client
 }
 
 func (m *MockedClient) FindContainer(id string) (docker.Container, error) {
 	args := m.Called(id)
 	return args.Get(0).(docker.Container), args.Error(1)
+}
+
+func (m *MockedClient) ContainerActions(action string, containerID string) error {
+	args := m.Called(action, containerID)
+	return args.Error(0)
 }
 
 func (m *MockedClient) ListContainers() ([]docker.Container, error) {
@@ -54,7 +59,7 @@ func (m *MockedClient) Host() *docker.Host {
 	return args.Get(0).(*docker.Host)
 }
 
-func createHandler(client DockerClient, content fs.FS, config Config) *chi.Mux {
+func createHandler(client docker.Client, content fs.FS, config Config) *chi.Mux {
 	if client == nil {
 		client = new(MockedClient)
 		client.(*MockedClient).On("ListContainers").Return([]docker.Container{}, nil)
@@ -69,7 +74,7 @@ func createHandler(client DockerClient, content fs.FS, config Config) *chi.Mux {
 		content = afero.NewIOFS(fs)
 	}
 
-	clients := map[string]DockerClient{
+	clients := map[string]docker.Client{
 		"localhost": client,
 	}
 	return createRouter(&handler{
@@ -79,6 +84,6 @@ func createHandler(client DockerClient, content fs.FS, config Config) *chi.Mux {
 	})
 }
 
-func createDefaultHandler(client DockerClient) *chi.Mux {
-	return createHandler(client, nil, Config{Base: "/", AuthProvider: NONE})
+func createDefaultHandler(client docker.Client) *chi.Mux {
+	return createHandler(client, nil, Config{Base: "/", Authorization: Authorization{Provider: NONE}})
 }

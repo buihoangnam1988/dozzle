@@ -6,6 +6,8 @@ toolbar:
   show-all: 显示全部
 label:
   containers: 容器
+  running-containers: 运行中的容器
+  all-containers: 所有容器
   total-containers: 所有容器
   running: 运行中
   total-cpu-usage: 所有CPU使用率
@@ -58,6 +60,7 @@ placeholder:
   search-containers: 搜索容器 (⌘ + k, ⌃k)
 settings:
   display: 显示
+  locale: 覆盖语言
   small-scrollbars: 使用较小的滚动条
   show-timesamps: 显示时间戳
   soft-wrap: 断行
@@ -74,3 +77,6 @@ settings:
     新版本可用！更新到 <a href="{href}" rel="noreferrer noopener">{nextVersion}</a>。
   show-std: 显示stdout和stderr标签
   automatic-redirect: 自动重定向到同名的新容器
+  compact: 紧凑模式
+log_actions:
+  copy_log: 复制日志

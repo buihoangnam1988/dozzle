@@ -81,8 +81,7 @@ func waitTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
 
 func Test_createEvent(t *testing.T) {
 	type args struct {
-		message    string
-		streamType StdType
+		message string
 	}
 	tests := []struct {
 		name string
@@ -115,6 +114,15 @@ func Test_createEvent(t *testing.T) {
 			},
 			want: &LogEvent{
 				Message: "{\"key\"}",
+			},
+		},
+		{
+			name: "invalid json message",
+			args: args{
+				message: "2020-05-13T18:55:37.772853839Z 123",
+			},
+			want: &LogEvent{
+				Message: "123",
 			},
 		},
 	}

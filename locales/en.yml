@@ -4,8 +4,13 @@ toolbar:
   search: Search
   show: Show only {std}
   show-all: Show all streams
+  stop: Stop
+  start: Start
+  restart: Restart
 label:
   containers: Containers
+  running-containers: Running Containers
+  all-containers: All Containers
   total-containers: Total Containers
   running: Running
   total-cpu-usage: Total CPU Usage
@@ -38,7 +43,7 @@ error:
   events-timeout:
     title: Something is not right
     message: >-
-      Dozzle UI timeed out while connecting to API. Please check network
+      Dozzle UI timed out while connecting to API. Please check network
       connection and try again.
 alert:
   redirected:
@@ -48,7 +53,7 @@ alert:
     title: Similar container found
     message: >-
       Dozzle found a similar container {containerId} that is running on the same
-      host. Do you want to switch to it?
+      host and will automatically switch to it unless you click 'Cancel'.
 title:
   page-not-found: Page not found
   login: Authentication Required
@@ -62,12 +67,11 @@ placeholder:
   search-containers: Search containers (⌘ + k, ⌃k)
 settings:
   display: Display
+  locale: Override language
   small-scrollbars: Use smaller scrollbars
   show-timesamps: Show timestamps
   soft-wrap: Soft wrap lines
-  12-24-format: >-
-    By default, Dozzle will use your browser's locale to format time. You can
-    force to 12 or 24 hour style.
+  datetime-format: Override date and time format
   font-size: Font size to use for logs
   color-scheme: Color scheme
   options: Options
@@ -80,6 +84,7 @@ settings:
     rel="noreferrer noopener">{nextVersion}</a>.
   show-std: Show stdout and stderr labels
   automatic-redirect: Automatically redirect to new containers with the same name
+  compact: Enable compact mode for logs
 releases:
   features: one new feature | {count} features
   bugFixes: one bug fix | {count} fixes
@@ -88,3 +93,10 @@ releases:
   two_parts: "{first} with {second}"
   latest: Latest
   no_releases: You have the latest version
+log_actions:
+  copy_log: Copy log
+  jump_to_context: Jump to context
+toasts:
+  copied:
+    title: Copied
+    message: Log copied to clipboard

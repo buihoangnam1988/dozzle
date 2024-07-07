@@ -6,6 +6,8 @@ toolbar:
   show-all: 顯示全部資料流
 label:
   containers: 容器
+  running-containers: 運行中的容器
+  all-containers: 所有容器
   total-containers: 總容器數
   running: 運行中
   total-cpu-usage: 總 CPU 使用率
@@ -41,6 +43,7 @@ placeholder:
   search-containers: 查詢容器 (⌘ + k, ⌃k)
 settings:
   display: 顯示
+  locale: 覆寫語言
   small-scrollbars: 使用較小的捲軸
   show-timesamps: 顯示時間戳記
   soft-wrap: 自動換行
@@ -56,3 +59,4 @@ settings:
   update-available: >-
     有新版本可用！請更新至 <a href="{href}" target="_blank" rel="noreferrer noopener">{nextVersion}</a>。
   show-std: 顯示 stdout 和 stderr 標籤
+  compact: 緊湊模式

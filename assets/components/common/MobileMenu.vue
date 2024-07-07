@@ -9,7 +9,7 @@
 
       <div class="ml-auto flex items-center gap-2">
         <a class="btn btn-circle flex" @click="$emit('search')" :title="$t('tooltip.search')">
-          <mdi:magnify class="h-5 w-5" />
+          <mdi:magnify class="size-5" />
         </a>
         <label class="btn btn-circle swap swap-rotate" data-testid="hamburger">
           <input type="checkbox" v-model="show" />
@@ -20,7 +20,7 @@
     </div>
 
     <transition name="fade">
-      <div v-show="show">
+      <div v-show="show" class="h-[calc(100vh-60px)] overflow-auto">
         <div class="mt-4 flex items-center justify-center gap-2">
           <dropdown-menu
             v-model="sessionHost"
@@ -29,17 +29,11 @@
             class="btn-sm"
             v-if="config.hosts.length > 1"
           />
-          <router-link :to="{ name: 'settings' }" class="btn btn-outline btn-sm">
-            <mdi:cog /> {{ $t("button.settings") }}
-          </router-link>
-          <a class="btn btn-outline btn-sm" :href="`${base}/logout`" :title="$t('button.logout')" v-if="secured">
-            <mdi:logout /> {{ $t("button.logout") }}
-          </a>
         </div>
 
         <ul class="menu">
           <li class="menu-title">{{ $t("label.containers") }}</li>
-          <li v-for="item in sortedContainers" :key="item.id">
+          <li v-for="item in sortedContainers" :key="item.id" :class="item.state">
             <router-link
               :to="{ name: 'container-id', params: { id: item.id } }"
               active-class="active-primary"
@@ -56,7 +50,6 @@
 </template>
 
 <script lang="ts" setup>
-const { base, secured } = config;
 import { sessionHost } from "@/composable/storage";
 const store = useContainerStore();
 const route = useRoute();
@@ -85,6 +78,10 @@ const sortedContainers = computed(() =>
 const hosts = computed(() => config.hosts.map(({ id, name }) => ({ value: id, label: name })));
 </script>
 <style scoped lang="postcss">
+li.exited {
+  @apply opacity-50;
+}
+
 .fade-enter-active,
 .fade-leave-active {
   @apply transition-opacity;
