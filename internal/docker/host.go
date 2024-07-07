@@ -2,11 +2,12 @@ package docker
 
 import (
 	"fmt"
-	"log"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type Host struct {
@@ -17,6 +18,13 @@ type Host struct {
 	CACertPath string   `json:"-"`
 	KeyPath    string   `json:"-"`
 	ValidCerts bool     `json:"-"`
+	NCPU       int      `json:"nCPU"`
+	MemTotal   int64    `json:"memTotal"`
+	Endpoint   string   `json:"endpoint"`
+}
+
+func (h Host) String() string {
+	return fmt.Sprintf("ID: %s, Endpoint: %s", h.ID, h.Endpoint)
 }
 
 func ParseConnection(connection string) (Host, error) {
@@ -43,6 +51,8 @@ func ParseConnection(connection string) (Host, error) {
 	host := remoteUrl.Hostname()
 	if _, err := os.Stat(filepath.Join(basePath, host)); !os.IsNotExist(err) {
 		basePath = filepath.Join(basePath, host)
+	} else {
+		log.Debugf("Remote host certificate path does not exist %s, falling back to default: %s", filepath.Join(basePath, host), basePath)
 	}
 
 	cacertPath := filepath.Join(basePath, "ca.pem")
@@ -63,6 +73,7 @@ func ParseConnection(connection string) (Host, error) {
 		CACertPath: cacertPath,
 		KeyPath:    keyPath,
 		ValidCerts: hasCerts,
+		Endpoint:   remoteUrl.String(),
 	}, nil
 
 }

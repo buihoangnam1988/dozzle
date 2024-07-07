@@ -15,97 +15,141 @@
       />
       <mdi:keyboard-esc class="flex" />
     </div>
-    <ul tabindex="0" class="menu dropdown-content !relative mt-2 w-full rounded-box bg-base-lighter p-2">
-      <li v-for="(result, index) in data">
-        <a
-          class="grid auto-cols-max grid-cols-[min-content,auto] gap-2 py-4"
-          @click.prevent="selected(result.item)"
-          @mouseenter="selectedIndex = index"
-          :class="index === selectedIndex ? 'focus' : ''"
-        >
-          <div :class="{ 'text-primary': result.item.state === 'running' }">
-            <octicon:container-24 />
-          </div>
-          <div class="truncate">
-            <template v-if="config.hosts.length > 1">
-              <span class="font-light">{{ result.item.host }}</span> /
-            </template>
-            <span data-name v-html="matchedName(result)"></span>
-          </div>
-          <distance-time :date="result.item.created" class="text-xs font-light" />
+    <div
+      class="dropdown-content !relative mt-2 max-h-[calc(100dvh-20rem)] w-full overflow-y-scroll rounded-md border-y-8 border-transparent bg-base-lighter px-2"
+      v-if="results.length"
+    >
+      <ul tabindex="0" class="menu">
+        <li v-for="(result, index) in data" ref="listItems">
           <a
-            @click.stop.prevent="addColumn(result.item)"
-            :title="$t('tooltip.pin-column')"
-            class="hover:text-secondary"
+            class="grid auto-cols-max grid-cols-[min-content,auto] gap-2 py-4"
+            @click.prevent="selected(result.item)"
+            :class="index === selectedIndex ? 'focus' : ''"
           >
-            <ic:sharp-keyboard-return v-if="index === selectedIndex" />
-            <cil:columns v-else />
+            <div :class="{ 'text-primary': result.item.state === 'running' }">
+              <template v-if="result.item.type === 'container'">
+                <octicon:container-24 />
+              </template>
+              <template v-else-if="result.item.type === 'service'">
+                <ph:stack-simple />
+              </template>
+              <template v-else-if="result.item.type === 'stack'">
+                <ph:stack />
+              </template>
+            </div>
+            <div class="truncate">
+              <template v-if="config.hosts.length > 1 && result.item.host">
+                <span class="font-light">{{ result.item.host }}</span> /
+              </template>
+              <span data-name v-html="matchedName(result)"></span>
+            </div>
+
+            <DistanceTime :date="result.item.created" class="text-xs font-light" />
+            <a
+              @click.stop.prevent="addColumn(result.item)"
+              :title="$t('tooltip.pin-column')"
+              class="hover:text-secondary"
+            >
+              <ic:sharp-keyboard-return v-if="index === selectedIndex" />
+              <cil:columns v-else />
+            </a>
           </a>
-        </a>
-      </li>
-    </ul>
+        </li>
+      </ul>
+    </div>
   </div>
 </template>
 
 <script lang="ts" setup>
+import { ContainerState } from "@/types/Container";
 import { useFuse } from "@vueuse/integrations/useFuse";
-import { type FuseResultMatch } from "fuse.js";
-
-const { maxResults = 5 } = defineProps<{
-  maxResults?: number;
-}>();
+import { type FuseResult } from "fuse.js";
 
 const close = defineEmit();
 
 const query = ref("");
 const input = ref<HTMLInputElement>();
+const listItems = ref<HTMLInputElement[]>();
 const selectedIndex = ref(0);
 
 const router = useRouter();
-const store = useContainerStore();
-const { containers } = storeToRefs(store);
+const containerStore = useContainerStore();
+const pinnedStore = usePinnedLogsStore();
+const { visibleContainers } = storeToRefs(containerStore);
+
+const swarmStore = useSwarmStore();
+const { stacks, services } = storeToRefs(swarmStore);
+
+type Item = {
+  id: string;
+  created: Date;
+  name: string;
+  state?: ContainerState;
+  host?: string;
+  type: "container" | "service" | "stack";
+};
 
 const list = computed(() => {
-  return containers.value.map(({ id, created, name, state, labels, hostLabel: host }) => {
-    return {
-      id,
-      created,
-      name,
-      state,
-      host,
-      labels: Object.entries(labels).map(([_, value]) => value),
-    };
-  });
+  const items: Item[] = [];
+
+  for (const container of visibleContainers.value) {
+    items.push({
+      id: container.id,
+      created: container.created,
+      name: container.name,
+      state: container.state,
+      host: container.hostLabel,
+      type: "container",
+    });
+  }
+
+  for (const service of services.value) {
+    items.push({
+      id: service.name,
+      created: service.updatedAt,
+      name: service.name,
+      state: "running",
+      type: "service",
+    });
+  }
+
+  for (const stack of stacks.value) {
+    items.push({
+      id: stack.name,
+      created: stack.updatedAt,
+      name: stack.name,
+      state: "running",
+      type: "stack",
+    });
+  }
+
+  return items;
 });
 
 const { results } = useFuse(query, list, {
   fuseOptions: {
-    keys: ["name", "host", "labels"],
+    keys: ["name", "host"],
     includeScore: true,
     useExtendedSearch: true,
     threshold: 0.3,
     includeMatches: true,
   },
-  resultLimit: 10,
-  matchAllWhenSearchEmpty: true,
 });
 
 const data = computed(() => {
-  return results.value
-    .toSorted((a, b) => {
-      if (a.score === b.score) {
-        if (a.item.state === b.item.state) {
-          return b.item.created - a.item.created;
-        } else if (a.item.state === "running" && b.item.state !== "running") {
-          return -1;
-        } else {
-          return 1;
-        }
+  return [...results.value].sort((a: FuseResult<Item>, b: FuseResult<Item>) => {
+    if (a.score === b.score) {
+      if (a.item.state === b.item.state) {
+        return b.item.created.getTime() - a.item.created.getTime();
+      } else if (a.item.state === "running" && b.item.state !== "running") {
+        return -1;
       } else {
-        return a.score - b.score;
+        return 1;
       }
-    })
-    .slice(0, maxResults);
+    } else {
+      return (a.score ?? 0) - (b.score ?? 0);
+    }
+  });
 });
 
 watch(query, (data) => {
@@ -114,24 +158,35 @@ watch(query, (data) => {
   }
 });
 
-onMounted(() => input.value?.focus());
+watch(selectedIndex, () => {
+  listItems.value?.[selectedIndex.value].scrollIntoView({ block: "end" });
+});
 
-function selected({ id }: { id: string }) {
-  router.push({ name: "container-id", params: { id } });
+useFocus(input, { initialValue: true });
+
+function selected(item: Item) {
+  if (item.type === "container") {
+    router.push({ name: "/container/[id]", params: { id: item.id } });
+  } else if (item.type === "service") {
+    router.push({ name: "/service/[name]", params: { name: item.id } });
+  } else if (item.type === "stack") {
+    router.push({ name: "/stack/[name]", params: { name: item.id } });
+  }
   close();
 }
 function addColumn(container: { id: string }) {
-  store.appendActiveContainer(container);
+  pinnedStore.pinContainer(container);
   close();
 }
 
-function matchedName({ item, matches = [] }: { item: { name: string }; matches?: FuseResultMatch[] }) {
+function matchedName({ item, matches = [] }: FuseResult<Item>) {
   const matched = matches.find((match) => match.key === "name");
   if (matched) {
     const { indices } = matched;
     const result = [];
     let lastIndex = 0;
     for (const [start, end] of indices) {
+      if (lastIndex > start) continue;
       result.push(item.name.slice(lastIndex, start));
       result.push(`<mark>${item.name.slice(start, end + 1)}</mark>`);
       lastIndex = end + 1;
@@ -147,9 +202,5 @@ function matchedName({ item, matches = [] }: { item: { name: string }; matches?:
 <style scoped lang="postcss">
 :deep(mark) {
   @apply bg-transparent text-inherit underline underline-offset-2;
-}
-
-.menu a {
-  @apply transition-none duration-0;
 }
 </style>

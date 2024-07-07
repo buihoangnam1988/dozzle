@@ -33,7 +33,7 @@ function createFuzzySearchModal() {
               containers: [
                 new Container("123", new Date(), "image", "test", "command", "host", {}, "status", "running", []),
                 new Container("345", new Date(), "image", "foo bar", "command", "host", {}, "status", "running", []),
-                new Container("567", new Date(), "image", "baz", "command", "host", {}, "status", "exited", []),
+                new Container("567", new Date(), "image", "baz", "command", "host", {}, "status", "running", []),
               ],
             },
           },
@@ -56,9 +56,10 @@ describe("<FuzzySearchModal />", () => {
   beforeEach(() => {
     vi.mocked(useRouter().push).mockReset();
   });
-  test("shows all", async () => {
+
+  test("shows none initially", async () => {
     const wrapper = createFuzzySearchModal();
-    expect(wrapper.findAll("li").length).toBe(3);
+    expect(wrapper.findAll("li").length).toBe(0);
   });
 
   test("search for foo", async () => {
@@ -74,6 +75,6 @@ describe("<FuzzySearchModal />", () => {
     const wrapper = createFuzzySearchModal();
     await wrapper.find("input").setValue("baz");
     await wrapper.find("input").trigger("keydown.enter");
-    expect(useRouter().push).toHaveBeenCalledWith({ name: "container-id", params: { id: "567" } });
+    expect(useRouter().push).toHaveBeenCalledWith({ name: "/container/[id]", params: { id: "567" } });
   });
 });

@@ -35,8 +35,14 @@ jobs:
           check-latest: true
       - name: Checkout code
         uses: actions/checkout@v4
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+      - name: Install gRPC and Go
+        run: |
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
       - name: Run Go Tests with Coverage
-        run: make test SKIP_ASSET=1
+        run: make test
   int-test:
     name: Integration Tests
     timeout-minutes: 60
@@ -58,8 +64,12 @@ jobs:
         run: pnpm install
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+      - name: Writing certs to file
+        run: |
+          echo "${{ secrets.TTL_KEY }}" > shared_key.pem
+          echo "${{ secrets.TTL_CERT }}" > shared_cert.pem
       - name: Build
-        uses: docker/bake-action@v4
+        uses: docker/bake-action@v5
         with:
           load: true
           set: |
@@ -84,16 +94,23 @@ jobs:
         with:
           images: amir20/dozzle
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@2b51285047da1547ffb1b2203d8be4c0af6b1f20 # v3.2.0
+        uses: docker/setup-buildx-action@4fd812986e6c8c2a69e18311145f9371337f27d4 # v3.4.0
       - name: Login to DockerHub
-        uses: docker/login-action@v3.1.0
+        uses: docker/login-action@v3.2.0
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Writing certs to file
+        run: |
+          echo "${{ secrets.TTL_KEY }}" > shared_key.pem
+          echo "${{ secrets.TTL_CERT }}" > shared_cert.pem
       - name: Build and push
-        uses: docker/build-push-action@v5.3.0
+        uses: docker/build-push-action@v6.3.0
         with:
           push: true
+          context: .
           platforms: linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64/v8
           tags: ${{ steps.meta.outputs.tags }}
           build-args: TAG=${{ steps.meta.outputs.version }}

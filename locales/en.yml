@@ -9,15 +9,12 @@ toolbar:
   restart: Restart
 label:
   containers: Containers
+  container: No containers | 1 container | {count} containers
+  serivce: No services | 1 service | {count} services
   running-containers: Running Containers
   all-containers: All Containers
-  total-containers: Total Containers
-  running: Running
-  total-cpu-usage: Total CPU Usage
-  total-mem-usage: Total Mem Usage
-  dozzle-version: Dozzle Version
-  all: All
   host: Host
+  hosts: Hosts
   password: Password
   username: Username
   container-name: Container Name
@@ -26,9 +23,15 @@ label:
   avg-cpu: Avg. CPU (%)
   avg-mem: Avg. MEM (%)
   pinned: Pinned
+  per-page: Rows per page
+  swarm-mode: Swarm Mode
+  services: Services
+  custom-groups: Custom Groups
 tooltip:
   search: Search containers (⌘ + k, ⌃k)
   pin-column: Pin as column
+  merge-services: Merge all services into one view
+  merge-containers: Merge all containers into one view
 error:
   page-not-found: This page does not exist
   invalid-auth: Username or password are not valid
@@ -63,8 +66,11 @@ button:
   logout: Logout
   login: Login
   settings: Settings
+  cancel: Cancel
+  redirect: Redirect
 placeholder:
   search-containers: Search containers (⌘ + k, ⌃k)
+  search: Search
 settings:
   display: Display
   locale: Override language

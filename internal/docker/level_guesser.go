@@ -3,10 +3,13 @@ package docker
 import (
 	"regexp"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
+	orderedmap "github.com/wk8/go-ordered-map/v2"
 )
 
 var keyValueRegex = regexp.MustCompile(`level=(\w+)`)
-var logLevels = []string{"error", "warn", "warning", "info", "debug", "trace", "fatal"}
+var logLevels = []string{"error", "warn", "warning", "info", "debug", "trace", "severe", "critical", "fatal"}
 var plainLevels = map[string]*regexp.Regexp{}
 var bracketLevels = map[string]*regexp.Regexp{}
 
@@ -42,15 +45,36 @@ func guessLogLevel(logEvent *LogEvent) string {
 			return matches[1]
 		}
 
+	case *orderedmap.OrderedMap[string, any]:
+		if value == nil {
+			return ""
+		}
+		if level, ok := value.Get("level"); ok {
+			if level, ok := level.(string); ok {
+				return strings.ToLower(level)
+			}
+		}
+
+	case *orderedmap.OrderedMap[string, string]:
+		if value == nil {
+			return ""
+		}
+		if level, ok := value.Get("level"); ok {
+			return strings.ToLower(level)
+		}
+
 	case map[string]interface{}:
 		if level, ok := value["level"].(string); ok {
-			return level
+			return strings.ToLower(level)
 		}
 
 	case map[string]string:
 		if level, ok := value["level"]; ok {
-			return level
+			return strings.ToLower(level)
 		}
+
+	default:
+		log.Debugf("unknown type to guess level: %T", value)
 	}
 
 	return ""

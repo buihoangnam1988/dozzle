@@ -1,4 +1,3 @@
-version: "3.4"
 services:
   custom_base:
     container_name: custom_base
@@ -8,6 +7,7 @@ services:
       - DOZZLE_FILTER=name=custom_base
       - DOZZLE_BASE=/foobarbase
       - DOZZLE_NO_ANALYTICS=1
+      - DOZZLE_HOSTNAME=custom name
     ports:
       - 8080:8080
     build:
@@ -29,6 +29,7 @@ services:
     environment:
       - DOZZLE_FILTER=name=dozzle
       - DOZZLE_NO_ANALYTICS=1
+      - DOZZLE_HOSTNAME=localhost
     ports:
       - 7070:8080
     build:
@@ -36,7 +37,7 @@ services:
   remote:
     container_name: remote
     environment:
-      - DOZZLE_REMOTE_HOST=tcp://proxy:2375
+      - DOZZLE_REMOTE_HOST=tcp://proxy:2375|remote-host
       - DOZZLE_FILTER=name=dozzle
       - DOZZLE_NO_ANALYTICS=1
     ports:
@@ -44,8 +45,37 @@ services:
     build:
       context: .
     depends_on:
-      - proxy
-
+      proxy:
+        condition: service_healthy
+  dozzle-with-agent:
+    container_name: with-agent
+    environment:
+      - DOZZLE_REMOTE_AGENT=agent:7007
+      - DOZZLE_NO_ANALYTICS=1
+      - DOZZLE_LEVEL=debug
+    ports:
+      - 8082:8080
+    build:
+      context: .
+    depends_on:
+      agent:
+        condition: service_healthy
+  agent:
+    container_name: agent
+    command: agent
+    environment:
+      - DOZZLE_FILTER=name=dozzle
+      - DOZZLE_NO_ANALYTICS=1
+    healthcheck:
+      test: ["CMD", "/dozzle", "healthcheck"]
+      interval: 5s
+      retries: 5
+      start_period: 5s
+      start_interval: 5s
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    build:
+      context: .
   proxy:
     container_name: proxy
     image: tecnativa/docker-socket-proxy
@@ -53,12 +83,18 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       - CONTAINERS=1
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "2375"]
+      interval: 5s
+      retries: 5
+      start_period: 5s
+      start_interval: 5s
     ports:
       - 2375:2375
 
   playwright:
     container_name: playwright
-    image: mcr.microsoft.com/playwright:v1.42.1-jammy
+    image: mcr.microsoft.com/playwright:v1.45.1-jammy
     working_dir: /app
     volumes:
       - .:/app

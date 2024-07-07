@@ -2,13 +2,20 @@
 title: Remote Host Setup
 ---
 
-# Remote Host Setup
+# Remote Host Setup <Badge type="warning" text="Deprecated" />
 
-Dozzle supports connecting to multiple remote hosts via `tcp://` using TLS and non-secured connections. Dozzle will need to have appropriate certs mounted to use secured connection. `ssh://` is not supported because Dozzle docker image does not ship with any ssh clients.
+Dozzle supports connecting to remote Docker hosts. This is useful when running Dozzle in a container and you want to monitor a different Docker host.
 
-## Connecting to remote hosts
+However, with Dozzle agents, you can connect to remote hosts without exposing the Docker socket. See the [agent](/guide/agent) page for more information.
 
-Remote hosts can be configured with `--remote-host` or `DOZZLE_REMOTE_HOST`. All certs must be mounted to `/certs` directory. The `/cert` directory expects to have `/certs/{ca,cert,key}.pem` or `/certs/{host}/{ca,cert,key}.pem` in case of multiple hosts.
+> [!WARNING]
+> Remote hosts will soon be deprecated in favor of agents. Agents provide a more secure way to connect to remote hosts. See the [agent](/guide/agent) page for more information. If you want keep using remote hosts then follow this discussion on [GitHub](https://github.com/amir20/dozzle/issues/3066).
+
+## Connecting to remote hosts with TLS
+
+Remote hosts can be configured with `--remote-host` or `DOZZLE_REMOTE_HOST`. All certs must be mounted to `/certs` directory. The `/certs` directory expects to have `/certs/{ca,cert,key}.pem` or `/certs/{host}/{ca,cert,key}.pem` in case of multiple hosts.
+
+Note the `{host}` value referred to here is the IP or FQDN configured and not the [optional label](#adding-labels-to-hosts).
 
 Multiple `--remote-host` flags can be used to specify multiple hosts. However, using `DOZZLE_REMOTE_HOST` the value should be comma separated.
 
@@ -39,10 +46,11 @@ services:
 If you are in a private network then you can use [Docker Socket Proxy](https://github.com/Tecnativa/docker-socket-proxy) which expose `docker.sock` file without the need of TLS. Dozzle will never try to write to Docker but it will need access to list APIs. The following command will start a proxy with minimal access.
 
 ```sh
-docker container run --privileged -e CONTAINERS=1 -v /var/run/docker.sock:/var/run/docker.sock -p 2375:2375 tecnativa/docker-socket-proxy
+docker container run --privileged -e CONTAINERS=1 -e INFO=1 -v /var/run/docker.sock:/var/run/docker.sock -p 2375:2375 tecnativa/docker-socket-proxy
 ```
 
-Note that `CONTAINERS=1` is required to list running containers. `EVENTS` is also needed but it is enabled by default.
+> [!TIP]
+> Using `CONTAINERS=1` is required to list running containers. `EVENTS` is also needed but it is enabled by default. `INFO=1` is optional but it will provide more information on host meta data.
 
 Running Dozzle without any certs should work. Here is an example:
 
@@ -50,9 +58,8 @@ Running Dozzle without any certs should work. Here is an example:
 docker run --volume=/var/run/docker.sock:/var/run/docker.sock -p 8080:8080 amir20/dozzle --remote-host tcp://123.1.1.1:2375
 ```
 
-::: warning
-Exposing `docker.sock` publicly is not safe. Only use a proxy for an internal network where all clients are trusted.
-:::
+> [!WARNING]
+> Docker Socket Proxy is not recommended for production use. It is only for private networks.
 
 ## Adding labels to hosts
 

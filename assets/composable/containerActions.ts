@@ -1,6 +1,7 @@
+import { Container } from "@/models/Container";
+
 type ContainerActions = "start" | "stop" | "restart";
-export const useContainerActions = () => {
-  const { container } = useContainerContext();
+export const useContainerActions = (container: Ref<Container>) => {
   const { showToast } = useToast();
 
   const actionStates = reactive({
@@ -10,7 +11,7 @@ export const useContainerActions = () => {
   });
 
   async function actionHandler(action: ContainerActions) {
-    const actionUrl = `/api/actions/${action}/${container.value.host}/${container.value.id}`;
+    const actionUrl = `/api/hosts/${container.value.host}/containers/${container.value.id}/actions/${action}`;
 
     const errors = {
       404: "container not found",

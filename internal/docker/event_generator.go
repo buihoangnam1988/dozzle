@@ -8,25 +8,26 @@ import (
 	"fmt"
 	"hash/fnv"
 	"io"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/goccy/go-json"
 
-	"github.com/go-logfmt/logfmt"
+	orderedmap "github.com/wk8/go-ordered-map/v2"
+
 	log "github.com/sirupsen/logrus"
 )
 
 type EventGenerator struct {
-	Events chan *LogEvent
-	Errors chan error
-	reader *bufio.Reader
-	next   *LogEvent
-	buffer chan *LogEvent
-	tty    bool
-	wg     sync.WaitGroup
+	Events      chan *LogEvent
+	Errors      chan error
+	reader      *bufio.Reader
+	next        *LogEvent
+	buffer      chan *LogEvent
+	tty         bool
+	wg          sync.WaitGroup
+	containerID string
 }
 
 var bufPool = sync.Pool{
@@ -37,13 +38,14 @@ var bufPool = sync.Pool{
 
 var ErrBadHeader = fmt.Errorf("dozzle/docker: unable to read header")
 
-func NewEventGenerator(reader io.Reader, tty bool) *EventGenerator {
+func NewEventGenerator(reader io.Reader, container Container) *EventGenerator {
 	generator := &EventGenerator{
-		reader: bufio.NewReader(reader),
-		buffer: make(chan *LogEvent, 100),
-		Errors: make(chan error, 1),
-		Events: make(chan *LogEvent),
-		tty:    tty,
+		reader:      bufio.NewReader(reader),
+		buffer:      make(chan *LogEvent, 100),
+		Errors:      make(chan error, 1),
+		Events:      make(chan *LogEvent),
+		tty:         container.Tty,
+		containerID: container.ID,
 	}
 	generator.wg.Add(2)
 	go generator.consumeReader()
@@ -82,7 +84,7 @@ func (g *EventGenerator) consumeReader() {
 		message, streamType, readerError := readEvent(g.reader, g.tty)
 		if message != "" {
 			logEvent := createEvent(message, streamType)
-
+			logEvent.ContainerID = g.containerID
 			logEvent.Level = guessLogLevel(logEvent)
 			g.buffer <- logEvent
 		}
@@ -156,9 +158,6 @@ func readEvent(reader *bufio.Reader, tty bool) (string, StdType, error) {
 	}
 }
 
-var validLogFmtMessage = regexp.MustCompile(`([a-zA-Z0-9_.-]+)=(?:(?:"(.*)")|(?:(?:([^\s]+)[\s])))`)
-var validLogFmtKey = regexp.MustCompile(`^[a-zA-Z0-9_.-]+$`)
-
 func createEvent(message string, streamType StdType) *LogEvent {
 	h := fnv.New32a()
 	h.Write([]byte(message))
@@ -170,7 +169,7 @@ func createEvent(message string, streamType StdType) *LogEvent {
 			message = strings.TrimSuffix(message[index+1:], "\n")
 			logEvent.Message = message
 			if json.Valid([]byte(message)) {
-				var data map[string]interface{}
+				data := orderedmap.New[string, any]()
 				if err := json.Unmarshal([]byte(message), &data); err != nil {
 					var jsonErr *json.UnmarshalTypeError
 					if errors.As(err, &jsonErr) {
@@ -179,29 +178,15 @@ func createEvent(message string, streamType StdType) *LogEvent {
 						}
 					}
 				} else {
-					logEvent.Message = data
-				}
-			} else if validLogFmtMessage.MatchString(message) {
-				buffer := bufPool.Get().(*bytes.Buffer)
-				buffer.Reset()
-				defer bufPool.Put(buffer)
-				buffer.WriteString(message)
-				decoder := logfmt.NewDecoder(buffer)
-				data := make(map[string]string)
-				decoder.ScanRecord()
-				allValid := true
-				for decoder.ScanKeyval() {
-					key := decoder.Key()
-					value := decoder.Value()
-					if !validLogFmtKey.Match(key) {
-						allValid = false
-						break
+					if data == nil {
+						logEvent.Message = ""
+					} else {
+						logEvent.Message = data
 					}
-					data[string(key)] = string(value)
 				}
-				if allValid && len(data) > 1 {
-					logEvent.Message = data
-				}
+
+			} else if data, err := ParseLogFmt(message); err == nil {
+				logEvent.Message = data
 			}
 		}
 	}
@@ -212,24 +197,24 @@ func checkPosition(currentEvent *LogEvent, nextEvent *LogEvent) {
 	currentLevel := guessLogLevel(currentEvent)
 	if nextEvent != nil {
 		if currentEvent.IsCloseToTime(nextEvent) && currentLevel != "" && !nextEvent.HasLevel() {
-			currentEvent.Position = START
-			nextEvent.Position = MIDDLE
+			currentEvent.Position = Beginning
+			nextEvent.Position = Middle
 		}
 
 		// If next item is not close to current item or has level, set current item position to end
-		if currentEvent.Position == MIDDLE && (nextEvent.HasLevel() || !currentEvent.IsCloseToTime(nextEvent)) {
-			currentEvent.Position = END
+		if currentEvent.Position == Middle && (nextEvent.HasLevel() || !currentEvent.IsCloseToTime(nextEvent)) {
+			currentEvent.Position = End
 		}
 
 		// If next item is close to current item and has no level, set next item position to middle
-		if currentEvent.Position == MIDDLE && !nextEvent.HasLevel() && currentEvent.IsCloseToTime(nextEvent) {
-			nextEvent.Position = MIDDLE
+		if currentEvent.Position == Middle && !nextEvent.HasLevel() && currentEvent.IsCloseToTime(nextEvent) {
+			nextEvent.Position = Middle
 		}
 		// Set next item level to current item level
-		if currentEvent.Position == START || currentEvent.Position == MIDDLE {
+		if currentEvent.Position == Beginning || currentEvent.Position == Middle {
 			nextEvent.Level = currentEvent.Level
 		}
-	} else if currentEvent.Position == MIDDLE {
-		currentEvent.Position = END
+	} else if currentEvent.Position == Middle {
+		currentEvent.Position = End
 	}
 }

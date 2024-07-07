@@ -1,11 +1,6 @@
 <template>
-  <search></search>
-  <log-container
-    :id="id"
-    :show-title="true"
-    :scrollable="activeContainers.length > 0"
-    v-if="currentContainer"
-  ></log-container>
+  <Search />
+  <ContainerLog :id="id" :show-title="true" :scrollable="pinnedLogs.length > 0" v-if="currentContainer" />
   <div v-else-if="ready" class="hero min-h-screen bg-base-200">
     <div class="hero-content text-center">
       <div class="max-w-md">
@@ -16,12 +11,15 @@
 </template>
 
 <script lang="ts" setup>
-import search from "@/components/Search.vue";
-const store = useContainerStore();
-const { id } = defineProps<{ id: string }>();
+const route = useRoute("/container/[id]");
+const id = toRef(() => route.params.id);
 
-const currentContainer = store.currentContainer($$(id));
-const { activeContainers, ready } = storeToRefs(store);
+const containerStore = useContainerStore();
+const currentContainer = containerStore.currentContainer(id);
+const { ready } = storeToRefs(containerStore);
+
+const pinnedLogsStore = usePinnedLogsStore();
+const { pinnedLogs } = storeToRefs(pinnedLogsStore);
 
 watchEffect(() => {
   if (ready.value) {
@@ -33,3 +31,7 @@ watchEffect(() => {
   }
 });
 </script>
+<route lang="yaml">
+meta:
+  containerMode: true
+</route>

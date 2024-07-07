@@ -1,7 +1,7 @@
 <template>
   <aside class="fixed h-screen w-[inherit] overflow-auto p-3" data-testid="navigation">
     <h1>
-      <router-link :to="{ name: 'index' }">
+      <router-link :to="{ name: '/' }">
         <svg class="h-14 w-28 fill-secondary">
           <use href="#logo"></use>
         </svg>
@@ -12,15 +12,16 @@
       </small>
     </h1>
 
-    <a
+    <button
       class="input input-sm mt-4 inline-flex cursor-pointer items-center gap-2 font-light hover:border-primary"
       @click="$emit('search')"
       :title="$t('tooltip.search')"
+      data-testid="search"
     >
       <mdi:magnify />
-      Search
-      <key-shortcut char="k"></key-shortcut>
-    </a>
+      {{ $t("placeholder.search") }}
+      <key-shortcut char="k" class="text-base-content/70"></key-shortcut>
+    </button>
 
     <side-menu class="mt-4"></side-menu>
   </aside>

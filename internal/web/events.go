@@ -8,6 +8,7 @@ import (
 
 	"github.com/amir20/dozzle/internal/analytics"
 	"github.com/amir20/dozzle/internal/docker"
+	docker_support "github.com/amir20/dozzle/internal/support/docker"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -27,47 +28,28 @@ func (h *handler) streamEvents(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	b := analytics.BeaconEvent{
-		Name:             "events",
-		Version:          h.config.Version,
-		Browser:          r.Header.Get("User-Agent"),
-		AuthProvider:     string(h.config.Authorization.Provider),
-		HasHostname:      h.config.Hostname != "",
-		HasCustomBase:    h.config.Base != "/",
-		HasCustomAddress: h.config.Addr != ":8080",
-		Clients:          len(h.clients),
-		HasActions:       h.config.EnableActions,
-	}
+	allContainers, errors := h.multiHostService.ListAllContainers()
 
-	allContainers := make([]docker.Container, 0)
+	for _, err := range errors {
+		log.Warnf("error listing containers: %v", err)
+		if hostNotAvailableError, ok := err.(*docker_support.HostUnavailableError); ok {
+			if _, err := fmt.Fprintf(w, "event: host-unavailable\ndata: %s\n\n", hostNotAvailableError.Host.ID); err != nil {
+				log.Errorf("error writing event to event stream: %v", err)
+			}
+		}
+	}
 	events := make(chan docker.ContainerEvent)
 	stats := make(chan docker.ContainerStat)
 
-	for _, store := range h.stores {
-		allContainers = append(allContainers, store.List()...)
-		store.SubscribeStats(ctx, stats)
-		store.Subscribe(ctx, events)
-	}
-
-	defer func() {
-		for _, store := range h.stores {
-			store.Unsubscribe(ctx)
-		}
-	}()
+	h.multiHostService.SubscribeEventsAndStats(ctx, events, stats)
 
 	if err := sendContainersJSON(allContainers, w); err != nil {
 		log.Errorf("error writing containers to event stream: %v", err)
 	}
-	b.RunningContainers = len(allContainers)
+
 	f.Flush()
 
-	if !h.config.NoAnalytics {
-		go func() {
-			if err := analytics.SendBeacon(b); err != nil {
-				log.Debugf("error sending beacon: %v", err)
-			}
-		}()
-	}
+	go sendBeaconEvent(h, r, len(allContainers))
 
 	for {
 		select {
@@ -86,10 +68,11 @@ func (h *handler) streamEvents(w http.ResponseWriter, r *http.Request) {
 			case "start", "die":
 				if event.Name == "start" {
 					log.Debugf("found new container with id: %v", event.ActorID)
-					containers := h.stores[event.Host].List()
-					if err := sendContainersJSON(containers, w); err != nil {
-						log.Errorf("error encoding containers to stream: %v", err)
-						return
+					if containers, err := h.multiHostService.ListContainersForHost(event.Host); err == nil {
+						if err := sendContainersJSON(containers, w); err != nil {
+							log.Errorf("error encoding containers to stream: %v", err)
+							return
+						}
 					}
 				}
 
@@ -121,6 +104,36 @@ func (h *handler) streamEvents(w http.ResponseWriter, r *http.Request) {
 		case <-ctx.Done():
 			log.Debugf("context done, closing event stream")
 			return
+		}
+	}
+}
+
+func sendBeaconEvent(h *handler, r *http.Request, runningContainers int) {
+	b := analytics.BeaconEvent{
+		AuthProvider:      string(h.config.Authorization.Provider),
+		Browser:           r.Header.Get("User-Agent"),
+		Clients:           h.multiHostService.TotalClients(),
+		HasActions:        h.config.EnableActions,
+		HasCustomAddress:  h.config.Addr != ":8080",
+		HasCustomBase:     h.config.Base != "/",
+		HasHostname:       h.config.Hostname != "",
+		Name:              "events",
+		RunningContainers: runningContainers,
+		Version:           h.config.Version,
+	}
+
+	local, err := h.multiHostService.LocalHost()
+	if err == nil {
+		b.ServerID = local.ID
+	}
+
+	if h.multiHostService.SwarmMode {
+		b.Mode = "swarm"
+	}
+
+	if !h.config.NoAnalytics {
+		if err := analytics.SendBeacon(b); err != nil {
+			log.Debugf("error sending beacon: %v", err)
 		}
 	}
 }

@@ -14,7 +14,6 @@ import (
 	"path"
 
 	"github.com/amir20/dozzle/internal/auth"
-	"github.com/amir20/dozzle/internal/docker"
 	"github.com/amir20/dozzle/internal/profile"
 
 	log "github.com/sirupsen/logrus"
@@ -43,24 +42,25 @@ func (h *handler) executeTemplate(w http.ResponseWriter, req *http.Request) {
 	if h.config.Base != "/" {
 		base = h.config.Base
 	}
-	hosts := make([]*docker.Host, 0, len(h.clients))
-	for _, v := range h.clients {
-		hosts = append(hosts, v.Host())
-	}
+	hosts := h.multiHostService.Hosts()
 	sort.Slice(hosts, func(i, j int) bool {
 		return hosts[i].Name < hosts[j].Name
 	})
 
 	config := map[string]interface{}{
-		"base":          base,
-		"version":       h.config.Version,
-		"hostname":      h.config.Hostname,
-		"hosts":         hosts,
-		"authProvider":  h.config.Authorization.Provider,
-		"enableActions": h.config.EnableActions,
+		"base": base,
 	}
 
 	user := auth.UserFromContext(req.Context())
+
+	if h.config.Authorization.Provider == NONE || user != nil {
+		config["authProvider"] = h.config.Authorization.Provider
+		config["version"] = h.config.Version
+		config["hostname"] = h.config.Hostname
+		config["hosts"] = hosts
+		config["enableActions"] = h.config.EnableActions
+	}
+
 	if user != nil {
 		if profile, err := profile.Load(*user); err == nil {
 			config["profile"] = profile

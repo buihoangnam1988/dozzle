@@ -1,13 +1,49 @@
 !
 <template>
-  <div class="text-right" v-if="containers.length > pageSizes[0]">
-    Show per page
-    <dropdown-menu
-      class="dropdown-left btn-xs md:btn-sm"
-      v-model="perPage"
-      :options="pageSizes.map((i) => ({ label: i.toLocaleString(), value: i }))"
-    />
+  <div class="flex flex-row">
+    <div v-if="Object.keys(hosts).length > 1" class="flex-1">
+      <div role="tablist" class="tabs-boxed tabs block" v-if="Object.keys(hosts).length < 4">
+        <input
+          type="radio"
+          name="host"
+          role="tab"
+          class="tab !rounded"
+          aria-label="Show All"
+          v-model="selectedHost"
+          :value="null"
+        />
+        <input
+          type="radio"
+          name="host"
+          role="tab"
+          class="tab !rounded"
+          :aria-label="host.name"
+          v-for="host in hosts"
+          :value="host.id"
+          :key="host.id"
+          v-model="selectedHost"
+        />
+      </div>
+      <dropdown-menu
+        class="btn-sm"
+        v-model="selectedHost"
+        :options="[
+          { label: 'Show All', value: null },
+          ...Object.values(hosts).map((host) => ({ label: host.name, value: host.id })),
+        ]"
+        v-else
+      />
+    </div>
+    <div class="flex-1 text-right" v-show="containers.length > pageSizes[0]">
+      {{ $t("label.per-page") }}
+      <dropdown-menu
+        class="dropdown-left btn-xs md:btn-sm"
+        v-model="perPage"
+        :options="pageSizes.map((i) => ({ label: i.toLocaleString(), value: i }))"
+      />
+    </div>
   </div>
+
   <table class="table table-lg bg-base">
     <thead>
       <tr :data-direction="direction > 0 ? 'asc' : 'desc'">
@@ -30,7 +66,7 @@
     <tbody>
       <tr v-for="container in paginated" :key="container.id">
         <td v-if="isVisible('name')">
-          <router-link :to="{ name: 'container-id', params: { id: container.id } }" :title="container.name">
+          <router-link :to="{ name: '/container/[id]', params: { id: container.id } }" :title="container.name">
             {{ container.name }}
           </router-link>
         </td>
@@ -40,28 +76,34 @@
           <distance-time :date="container.created" strict :suffix="false"></distance-time>
         </td>
         <td v-if="isVisible('cpu')">
-          <bar-chart :value="container.movingAverage.cpu / 100">
-            {{ (container.movingAverage.cpu / 100).toLocaleString(undefined, { style: "percent" }) }}
-          </bar-chart>
+          <div class="flex flex-row items-center gap-1">
+            <progress
+              class="progress progress-primary"
+              :value="Math.min(container.movingAverage.cpu, 100)"
+              :max="100"
+            ></progress>
+            <span class="text-sm">{{ container.movingAverage.cpu.toFixed(0) }}%</span>
+          </div>
         </td>
         <td v-if="isVisible('mem')">
-          <bar-chart :value="container.movingAverage.memory / 100">
-            {{ (container.movingAverage.memory / 100).toLocaleString(undefined, { style: "percent" }) }}
-          </bar-chart>
+          <div class="flex flex-row items-center gap-1">
+            <progress class="progress progress-primary" :value="container.movingAverage.memory" max="100"></progress>
+            <span class="text-sm">{{ container.movingAverage.memory.toFixed(0) }}%</span>
+          </div>
         </td>
       </tr>
     </tbody>
   </table>
   <div class="p-4 text-center">
     <nav class="join" v-if="isPaginated">
-      <button
+      <input
+        class="btn btn-square join-item"
+        type="radio"
+        v-model="currentPage"
+        :aria-label="`${i}`"
+        :value="i"
         v-for="i in totalPages"
-        class="btn join-item"
-        :class="{ 'btn-primary': i === currentPage }"
-        @click="currentPage = i"
-      >
-        {{ i }}
-      </button>
+      />
     </nav>
   </div>
 </template>
@@ -69,6 +111,9 @@
 <script setup lang="ts">
 import { Container } from "@/models/Container";
 import { toRefs } from "@vueuse/core";
+
+const { hosts } = useHosts();
+const selectedHost = ref(null);
 
 const fields = {
   name: {
@@ -116,13 +161,13 @@ const storage = useStorage<{ column: keys; direction: 1 | -1 }>("DOZZLE_TABLE_CO
   direction: -1,
 });
 const { column: sortField, direction } = toRefs(storage);
+const counter = useInterval(10000);
+const filteredContainers = computed(() =>
+  containers.filter((c) => selectedHost.value === null || c.host === selectedHost.value),
+);
 const sortedContainers = computedWithControl(
-  () => [containers.length, sortField.value, direction.value],
-  () => {
-    return containers.sort((a, b) => {
-      return fields[sortField.value].sortFunc(a, b);
-    });
-  },
+  () => [filteredContainers.value.length, sortField.value, direction.value, counter.value],
+  () => filteredContainers.value.sort((a, b) => fields[sortField.value].sortFunc(a, b)),
 );
 
 const totalPages = computed(() => Math.ceil(sortedContainers.value.length / perPage.value));

@@ -4,13 +4,14 @@ import type { ContainerHealth, ContainerJson, ContainerStat } from "@/types/Cont
 import { Container } from "@/models/Container";
 import i18n from "@/modules/i18n";
 
-const { showToast } = useToast();
+const { showToast, removeToast } = useToast();
+const { markHostAvailable } = useHosts();
 // @ts-ignore
 const { t } = i18n.global;
 
 export const useContainerStore = defineStore("container", () => {
   const containers: Ref<Container[]> = ref([]);
-  const activeContainerIds: Ref<string[]> = ref([]);
+
   let es: EventSource | null = null;
   const ready = ref(false);
 
@@ -29,14 +30,12 @@ export const useContainerStore = defineStore("container", () => {
     return containers.value.filter(filter);
   });
 
-  const activeContainers = computed(() => activeContainerIds.value.map((id) => allContainersById.value[id]));
-
   function connect() {
     es?.close();
     ready.value = false;
     es = new EventSource(withBase("/api/events/stream"));
     es.addEventListener("error", (e) => {
-      if (es?.readyState === EventSource.CLOSED) {
+      if (es?.readyState === EventSource.CONNECTING) {
         showToast(
           {
             id: "events-stream",
@@ -68,6 +67,11 @@ export const useContainerStore = defineStore("container", () => {
       }
     });
 
+    es.addEventListener("host-unavailable", (e) => {
+      const hostId = (e as MessageEvent).data;
+      markHostAvailable(hostId, false);
+    });
+
     es.addEventListener("container-health", (e) => {
       const event = JSON.parse((e as MessageEvent).data) as { actorId: string; health: ContainerHealth };
       const container = allContainersById.value[event.actorId];
@@ -77,6 +81,7 @@ export const useContainerStore = defineStore("container", () => {
     });
 
     es.onopen = () => {
+      removeToast("events-stream");
       if (containers.value.length > 0) {
         containers.value = [];
       }
@@ -119,7 +124,7 @@ export const useContainerStore = defineStore("container", () => {
       ...newContainers.map((c) => {
         return new Container(
           c.id,
-          new Date(c.created * 1000),
+          new Date(c.created),
           c.image,
           c.name,
           c.command,
@@ -128,6 +133,7 @@ export const useContainerStore = defineStore("container", () => {
           c.status,
           c.state,
           c.stats,
+          c.group,
           c.health,
         );
       }),
@@ -135,19 +141,26 @@ export const useContainerStore = defineStore("container", () => {
   };
 
   const currentContainer = (id: Ref<string>) => computed(() => allContainersById.value[id.value]);
-  const appendActiveContainer = ({ id }: { id: string }) => activeContainerIds.value.push(id);
-  const removeActiveContainer = ({ id }: { id: string }) =>
-    activeContainerIds.value.splice(activeContainerIds.value.indexOf(id), 1);
+
+  const containerNames = computed(() =>
+    containers.value.reduce(
+      (acc, container) => {
+        acc[container.id] = container.name;
+        return acc;
+      },
+      {} as Record<string, string>,
+    ),
+  );
+
+  const findContainerById = (id: string) => allContainersById.value[id];
 
   return {
     containers,
-    activeContainerIds,
     allContainersById,
     visibleContainers,
-    activeContainers,
     currentContainer,
-    appendActiveContainer,
-    removeActiveContainer,
+    findContainerById,
+    containerNames,
     ready,
   };
 });

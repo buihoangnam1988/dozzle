@@ -17,7 +17,7 @@
         </div>
         <div class="form-control">
           <label class="label">
-            <span class="label-text">Password</span>
+            <span class="label-text">{{ $t("label.password") }}</span>
           </label>
           <input
             class="input input-bordered"
@@ -50,8 +50,7 @@ let form: HTMLFormElement | undefined = $ref();
 const params = new URLSearchParams(window.location.search);
 
 async function onLogin() {
-  const url = config.authProvider === "simple" ? "/api/token" : "/api/validateCredentials";
-  const response = await fetch(withBase(url), {
+  const response = await fetch(withBase("/api/token"), {
     body: new FormData(form),
     method: "POST",
   });
